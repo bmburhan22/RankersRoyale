@@ -27,7 +27,7 @@ function App() {
         </p>
       </div>
       <p className="read-the-docs">
-        BURHAN CHANGE
+        BURHAN CHANGE 2
       </p>
     </>
   )
