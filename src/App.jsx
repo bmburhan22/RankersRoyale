@@ -1,34 +1,23 @@
 import { useState } from 'react'
+import {Navigate, Routes, Route} from 'react-router-dom'
 import './App.css'
 import {get, endPoints } from './utilities/api';
+import { routes } from './utilities/routes';
 import axios from 'axios';
+import TopNavbar  from './components/navbar';
+import Topbar from './components/navbar';
+
+
 function App() {
   const [count, setCount] = useState(0)
     // get(endPoints['REDIRECT'], {})
-    axios.get('http://localhost:2000/redirect').then((res)=>console.log(res.data ));
+    // axios.get('http://localhost:2000/redirect').then((res)=>console.log(res.data ));
     
   return (
     <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img  className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        burhan5
-      </p>
+      <Routes>          
+        <Route path={routes.LOGIN} element={<Topbar />} />
+      </Routes>
     </>
   )
 }
