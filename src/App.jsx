@@ -27,7 +27,7 @@ function App() {
         </p>
       </div>
       <p className="read-the-docs">
-        Inder CHANGE 21
+        inder CHANGE 5
       </p>
     </>
   )
