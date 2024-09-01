@@ -27,7 +27,7 @@ function App() {
         </p>
       </div>
       <p className="read-the-docs">
-        new change
+        new change 2
       </p>
     </>
   )
