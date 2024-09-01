@@ -1,34 +1,14 @@
 import { useState } from 'react'
 import './App.css'
-import {get, endPoints } from './utilities/api';
-import axios from 'axios';
+import { endPoints, API_URL } from './utilities/api';
 function App() {
-  const [count, setCount] = useState(0)
-    // get(endPoints['REDIRECT'], {})
-    axios.get('http://localhost:2000/redirect').then((res)=>console.log(res.data ));
+const [auth, setAuth] = useState(false);
     
   return (
     <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img  className="logo" alt="Vite logo" />
+        <a href={API_URL+endPoints['AUTH']}>
+          Discord Login
         </a>
-        <a href="https://react.dev" target="_blank">
-          <img className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        inder CHANGE 5
-      </p>
     </>
   )
 }
