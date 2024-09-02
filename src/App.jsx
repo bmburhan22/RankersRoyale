@@ -19,6 +19,13 @@ function App() {
     <AuthProvider>
       <Routes>
         <Route path={routes.LOGIN} element={<Topbar />} />
+
+        {/* {auth.isAuthenticated ? (
+          <Route path="/dashboard" element={<Dashboard />} />
+        ) : (
+          <Route path={routes.LOGIN} element={<Navigate to="/login" />} />
+        )}
+         */}
       </Routes>
     </AuthProvider>
     </>
