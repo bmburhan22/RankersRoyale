@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { FaDiscord } from 'react-icons/fa';
 import { styled } from '@mui/material/styles';
 import Box from '@mui/material/Box';
@@ -8,11 +8,10 @@ import CssBaseline from '@mui/material/CssBaseline';
 import AdbIcon from '@mui/icons-material/Adb';
 import Typography from '@mui/material/Typography';
 import axios from 'axios';
-
+import { AuthContext } from '../utilities/auth'; 
 
 const drawerWidth = 240;
 const appBarHeight = 64;
-
 
 const AppBar = styled(MuiAppBar)(({ theme }) => ({
   backgroundColor: '#333',
@@ -24,61 +23,50 @@ const AppBar = styled(MuiAppBar)(({ theme }) => ({
   }),
 }));
 
+const loginUrl ='http://192.168.3.105:2000/auth/discord/login';
 
-const loginUrl ='http://192.168.3.105:2000/auth/discord/login'
-const handleLoginClick = () => {
-  discorlogin();
-  window.location.href = loginUrl;
-};
+const Topbar = () => {  
+  const { isAuthenticated, login } = useContext(AuthContext); 
 
-const discorlogin = () => {
-  axios.get('http://192.168.3.105:2000/redirect')
-    .then((res) => console.log(res.data))
-    .catch((error) => console.error(error));
-};
+  const handleLoginClick = () => {
+    discorlogin();
+  };
 
-const Topbar = () => {
-  
+  const discorlogin = () => {
+    axios.get('http://192.168.3.105:2000/redirect')
+      .then((res) => {
+        if (res.data.token) {
+          // login(res.data.token, res.data.profilePhoto); 
+          window.location.href = loginUrl; 
+        }
+      })
+      .catch((error) => console.error(error));
+  };
+
   return (  
     <Box sx={{ display: 'flex', height: '100vh' }}>
       <CssBaseline />
       <AppBar position="fixed">
         <Toolbar>
-        <AdbIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
-          <Typography
-            variant="h6"
-            noWrap
-            component="a"
-            href="#app-bar-with-responsive-menu"
-            sx={{
-              mr: 2,
-              display: { xs: 'none', md: 'flex' },
-              fontFamily: 'monospace',
-              fontWeight: 700,
-              letterSpacing: '.3rem',
-              color: 'inherit',
-              textDecoration: 'none',
-            }}
-          >
+          
+          <AdbIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
+          <Typography variant="h6" noWrap component="a" href="/" sx={{ mr: 2, display: { xs: 'none', md: 'flex' }, fontFamily: 'monospace', fontWeight: 700, letterSpacing: '.3rem', color: 'inherit', textDecoration: 'none',}}>
             RankersRoyale
           </Typography>
+          
           <Box sx={{ display: { xs: 'none', sm: 'block' }, ml: 'auto' }}>
-            <a
-              href="#"
-              style={styles.loginButton}
-              onClick={(e) => {
-                e.preventDefault(); 
-                handleLoginClick(); 
-              }}
-            >
-              <FaDiscord style={styles.icon} />
-              Login
-            </a>
+            {isAuthenticated ? (
+              <img src={localStorage.getItem('avatar')}  alt="Profile" style={styles.profilePhoto}/>
+              ) : (
+              <a href="#" style={styles.loginButton} onClick={(e) => { e.preventDefault(); handleLoginClick();}}>
+                <FaDiscord style={styles.icon} />
+                Login
+              </a>
+             )}
           </Box>
-
+        
         </Toolbar>      
       </AppBar>
-
     </Box>
   );
 };
@@ -98,6 +86,11 @@ const styles = {
   icon: {
     marginRight: '10px',
   },
+  profilePhoto: {
+    width: '40px',
+    height: '40px',
+    borderRadius: '50%',
+  }
 };
 
 export default Topbar;

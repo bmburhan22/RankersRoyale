@@ -6,6 +6,7 @@ import { routes } from './utilities/routes';
 import axios from 'axios';
 import TopNavbar  from './components/navbar';
 import Topbar from './components/navbar';
+import { AuthProvider, AuthContext } from './utilities/auth';
 
 
 function App() {
@@ -15,9 +16,11 @@ function App() {
     
   return (
     <>
-      <Routes>          
+    <AuthProvider>
+      <Routes>
         <Route path={routes.LOGIN} element={<Topbar />} />
       </Routes>
+    </AuthProvider>
     </>
   )
 }
