@@ -1,14 +1,33 @@
 import { useState } from 'react'
+import {Navigate, Routes, Route} from 'react-router-dom'
 import './App.css'
-import { endPoints, API_URL } from './utilities/api';
+import {get, endPoints } from './utilities/api';
+import { routes } from './utilities/routes';
+import axios from 'axios';
+import TopNavbar  from './components/navbar';
+import Topbar from './components/navbar';
+import { AuthProvider, AuthContext } from './utilities/auth';
+
+
 function App() {
-const [auth, setAuth] = useState(false);
+  const [count, setCount] = useState(0)
+    // get(endPoints['REDIRECT'], {})
+    // axios.get('http://localhost:2000/redirect').then((res)=>console.log(res.data ));
     
   return (
     <>
-        <a href={API_URL+endPoints['AUTH']}>
-          Discord Login
-        </a>
+    <AuthProvider>
+      <Routes>
+        <Route path={routes.LOGIN} element={<Topbar />} />
+
+        {/* {auth.isAuthenticated ? (
+          <Route path="/dashboard" element={<Dashboard />} />
+        ) : (
+          <Route path={routes.LOGIN} element={<Navigate to="/login" />} />
+        )}
+         */}
+      </Routes>
+    </AuthProvider>
     </>
   )
 }
