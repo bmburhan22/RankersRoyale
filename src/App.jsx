@@ -10,7 +10,6 @@ import { AuthProvider, AuthContext } from './utilities/auth';
 
 
 function App() {
-  const [count, setCount] = useState(0)
     // get(endPoints['REDIRECT'], {})
     // axios.get('http://localhost:2000/redirect').then((res)=>console.log(res.data ));
     

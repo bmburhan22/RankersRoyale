@@ -23,7 +23,7 @@ const AppBar = styled(MuiAppBar)(({ theme }) => ({
   }),
 }));
 
-const loginUrl ='http://192.168.3.105:2000/auth/discord/login';
+const loginUrl ='http://192.168.3.101:2000/auth/discord/login';
 
 const Topbar = () => {  
   const { isAuthenticated, login } = useContext(AuthContext); 
@@ -33,7 +33,7 @@ const Topbar = () => {
   };
 
   const discorlogin = () => {
-    axios.get('http://192.168.3.105:2000/redirect')
+    axios.get('http://192.168.3.101:2000/redirect')
       .then((res) => {
         if (res.data.token) {
           // login(res.data.token, res.data.profilePhoto); 
@@ -58,7 +58,7 @@ const Topbar = () => {
             {isAuthenticated ? (
               <img src={localStorage.getItem('avatar')}  alt="Profile" style={styles.profilePhoto}/>
               ) : (
-              <a href="#" style={styles.loginButton} onClick={(e) => { e.preventDefault(); handleLoginClick();}}>
+              <a href={loginUrl} style={styles.loginButton} > 
                 <FaDiscord style={styles.icon} />
                 Login
               </a>
@@ -70,7 +70,7 @@ const Topbar = () => {
     </Box>
   );
 };
-
+// onClick={(e) => { e.preventDefault(); handleLoginClick();}}
 const styles = {
   loginButton: {
     display: 'flex',
