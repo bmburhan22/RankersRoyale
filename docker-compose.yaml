@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  db:
+    container_name: pg-container
+    image: postgres:alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=rankers_royale
+    ports:
+      - 5000:5432
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  api:
+    container_name: rankers-royale-api-container
+    image: bmburhan/rankers-royale-api
+    environment:
+      - DB_URL=postgres://postgres:postgres@db:5432/rankers_royale
+    ports:
+      - 2000:2000
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pg-data:

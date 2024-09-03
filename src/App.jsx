@@ -7,11 +7,11 @@ import axios from 'axios';
 import TopNavbar  from './components/navbar';
 import Topbar from './components/navbar';
 import { AuthProvider, AuthContext } from './utilities/auth';
-
+import { URL } from './utilities/api';
 
 function App() {
     // get(endPoints['REDIRECT'], {})
-    // axios.get('http://localhost:2000/redirect').then((res)=>console.log(res.data ));
+    // axios.get(`${URL}/redirect`).then((res)=>console.log(res.data ));
     
   return (
     <>

@@ -9,7 +9,7 @@ import AdbIcon from '@mui/icons-material/Adb';
 import Typography from '@mui/material/Typography';
 import axios from 'axios';
 import { AuthContext } from '../utilities/auth'; 
-
+import { URL } from '../utilities/api';
 const drawerWidth = 240;
 const appBarHeight = 64;
 
@@ -23,7 +23,7 @@ const AppBar = styled(MuiAppBar)(({ theme }) => ({
   }),
 }));
 
-const loginUrl ='http://192.168.3.101:2000/auth/discord/login';
+const loginUrl =`${URL}/auth/discord/login`;
 
 const Topbar = () => {  
   const { isAuthenticated, login } = useContext(AuthContext); 
@@ -33,7 +33,7 @@ const Topbar = () => {
   };
 
   const discorlogin = () => {
-    axios.get('http://192.168.3.101:2000/redirect')
+    axios.get(`${URL}/redirect`)
       .then((res) => {
         if (res.data.token) {
           // login(res.data.token, res.data.profilePhoto); 
