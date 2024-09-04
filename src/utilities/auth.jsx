@@ -63,37 +63,33 @@
 // }
 
 import React, { createContext, useState, useEffect } from 'react';
+import Cookie  from 'js-cookie';
+import { useNavigate } from 'react-router-dom';
+import { routes } from './routes';
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
 
-  const [auth, setAuth] = useState({
-    isAuthenticated: false,
-    token: null,
-    avatar: '', 
-  });
+  const [auth, setAuth] = useState({isAuthenticated: false,});
+  const navigate = useNavigate();
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const profilePhoto = localStorage.getItem('avatar');
+    const token = Cookie.get('token');
+    let user=null; 
     if (token) {
-      setAuth({ isAuthenticated: true, token, profilePhoto });
+        try{ user= JSON.parse(decodeURI(Cookie.get('user')));}catch(e){console.error('Unable to parse user cookie',e);}
+        setAuth({ isAuthenticated: true, token,...user });
+        console.log(auth);
     }
   }, []);
 
-  const login = (token, profilePhoto) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('avatar', avatar); 
-    setAuth({ isAuthenticated: true, token, profilePhoto });
-  };
+const logout = ()=>{
+  Cookie.remove('token');
+  Cookie.remove('user');
+  navigate('/', {replace:true});
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('avatar'); 
-    setAuth({ isAuthenticated: false, token: null, avatar: '' });
-  };
-
+}
   return (
-    <AuthContext.Provider value={{ ...auth, login, logout }}>
+    <AuthContext.Provider value={{logout, ...auth}}>
       {children}
     </AuthContext.Provider>
   );

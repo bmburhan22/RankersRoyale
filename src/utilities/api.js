@@ -4,7 +4,6 @@ export const endPoints = {
     AUTH:'/auth/discord/login',
 }
 
-export const URL = import.meta.env.RR_URL;
 
-export const get = (path, data)=>axios.get(URL+path, {data});
-export const post = (path, data)=>axios.post(URL+path, {data});
+export const get = (path, data)=>axios.get(API_URL+path, {data});
+export const post = (path, data)=>axios.post(API_URL+path, {data});

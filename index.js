@@ -1,7 +1,7 @@
 
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
-import { Sequelize, STRING, TEXT } from 'sequelize';
+import { Sequelize, STRING } from 'sequelize';
 import axios from 'axios';
 import express, { json } from 'express';
 import cookieParser from 'cookie-parser';
@@ -9,25 +9,23 @@ import cors from 'cors';
 import path from 'path';
 import { Client, GatewayIntentBits } from 'discord.js';
 dotenv.config();
-const { HOST, PORT, DB_URL, TOKEN, JWT_SECRET, CLIENT_REDIRECT, REDIRECT_URI, REDIRECT,
-    DISCORD_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET, DISCORD_CLIENT_ID, DISCORD_GUILD_ID } = process.env;
+const { PORT, DB_URL, TOKEN, JWT_SECRET,   
+    DISCORD_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET,  DISCORD_GUILD_ID } = process.env;
 
 const app = express();
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-
 client.login(TOKEN);
 
-const DISCORD_API ='https://discord.com/api';
+const DISCORD_API = 'https://discord.com/api';
 const ROUTES = {
-    LOGIN:'/auth/discord/login',
- CASINOS:    '/casinos',
- CASINO_PAGE:'/casinos/:casino_id'
+    ROOT:'/',
+    LOGIN: '/auth/discord/login',
+    CASINOS: '/casinos',
+    CASINO_PAGE: '/casinos/:casino_id'
 }
 
-// 
 const frontend_path = path.join(path.resolve(), 'dist');
 app.use(express.static(frontend_path));
-//
 
 const sq = new Sequelize(DB_URL);
 
@@ -36,9 +34,7 @@ const users = sq.define('users',
     {
         id: { primaryKey: true, type: STRING }
         , username: { type: STRING },
-        // avatar: { type: STRING }, 
         discriminator: { type: STRING },
-        // discord_jwt: { type: TEXT }
     }
     , { freezeTableName: true, timestamps: false });
 const casinos = sq.define('casinos',
@@ -53,48 +49,52 @@ const headers = {
 }
 
 
-app.use(cors({ credentials: true }));
+app.use(cors());
 app.use(json());
 app.use(cookieParser());
 
-const authenticate = async (req, res, next) => {const token = req.cookies?.['token'];
-        if (!token) { return res.status(401).json({ err: 'Authorization token needed' }); }
-        return await jwt.verify(token, JWT_SECRET, async (err, user_id) => {
-            if (err) { return res.status(403).json({ err }); }
-            const user = await client.guilds.fetch(DISCORD_GUILD_ID)
-                .then(g => g?.members?.fetch(user_id).then(u => u));
-            // cache not updating each time
-            if (!user) return res.status(403).json({ err: 'User not is not a server member' });
-            if (!(await user.roles.cache.has(DISCORD_ROLE_ID))) return res.status(403).json({ err: 'User not verified' });
-            res.locals.user = user;
-            await next();
-        });
-    };
+const authenticate = async (req, res, next) => {
+    const token = req.cookies?.['token'];
+    if (!token) { return res.status(401).json({ err: 'Authorization token needed' }); }
+    return await jwt.verify(token, JWT_SECRET, async (err, user_id) => {
+        if (err) { return res.status(403).json({ err }); }
+        const member = await client.guilds.fetch(DISCORD_GUILD_ID)
+            .then(g => g?.members?.fetch(user_id).then(m => m));
+        // cache not updating each time
+        if (!member) return res.status(403).json({ err: 'Not a server member' });
+        if (!(await member.roles.cache.has(DISCORD_ROLE_ID))) return res.status(403).json({ err: 'Member not verified' });
+        res.locals.member = member;
+        const { username, discriminator, globalName } = member.user;
+        const { displayAvatarURL, nickname } = member.toJSON();
+        res.cookie('user', JSON.stringify({ displayAvatarURL, nickname, username, discriminator, globalName }));
+        await next();
+    });
+};
 
+
+
+const {redirect_uri, client_id} = Object.fromEntries(new URL(DISCORD_OAUTH2_URL).searchParams);
+const REDIRECT = new URL(redirect_uri).pathname;
 
 app.get(REDIRECT, async ({ query: { code } }, res) => {
 
     if (!code) return res.json({});
-
     const params = new URLSearchParams({
-        client_id: DISCORD_CLIENT_ID,
-        client_secret: DISCORD_CLIENT_SECRET,
-        grant_type: 'authorization_code',
-        code,
-        redirect_uri: REDIRECT_URI
-    });
-    
+        client_id,redirect_uri,
+            code, client_secret: DISCORD_CLIENT_SECRET,
+            grant_type: 'authorization_code',
+        });
+
     try {
 
         const { data: authData } = await axios.post(`${DISCORD_API}/oauth2/token`, params, { headers });
-        // const discord_jwt = jwt.sign(authData, JWT_SECRET);
         const { data: { id, username, discriminator } } = await axios.get(`${DISCORD_API}/users/@me`, { headers: { 'Authorization': `Bearer ${authData.access_token}`, ...headers } });
         const data = { id, username, discriminator };
         const [_, isCreated] = await users.findOrCreate({ where: { id }, defaults: data });
         if (!isCreated) await users.update(data, { where: { id } });
 
         const token = jwt.sign(id, JWT_SECRET);
-        return res.cookie('token', token).redirect(CLIENT_REDIRECT);
+        return res.cookie('token', token).redirect(ROUTES.ROOT);
 
     } catch (error) {
         return res.json({ error });
@@ -103,10 +103,10 @@ app.get(REDIRECT, async ({ query: { code } }, res) => {
 
 );
 
-app.get(ROUTES.CASINOS, authenticate,async (req, res) => {
+app.get(ROUTES.CASINOS, authenticate, async (req, res) => {
 
     try {
-        const user_casino = await users_cainos.findAll({ where: { user_id: res.locals.user.id } });
+        const user_casino = await users_cainos.findAll({ where: { user_id: res.locals.member.id } });
         return res.json({ user_casino });
     } catch (error) {
         return res.json({ error });
@@ -115,14 +115,14 @@ app.get(ROUTES.CASINOS, authenticate,async (req, res) => {
 
 );
 
-app.get(ROUTES.CASINO_PAGE,authenticate, async ({ params: { casino_id } }, res) => {
+app.get(ROUTES.CASINO_PAGE, authenticate, async ({ params: { casino_id } }, res) => {
 
     try {
         const casino = await casinos.findOne({ where: { id: casino_id } });
         if (!casino) return res.json({ 'msg': 'Invalid casino' });
-        
-        const user_casino = await users_cainos.findOne({ where: { user_id: res.locals.user.id, casino_id } });
-        
+
+        const user_casino = await users_cainos.findOne({ where: { user_id: res.locals.member.id, casino_id } });
+
         return res.json({ user_casino });
     } catch (err) {
         return res.json({ err });
@@ -131,14 +131,13 @@ app.get(ROUTES.CASINO_PAGE,authenticate, async ({ params: { casino_id } }, res) 
 
 );
 
-app.post(ROUTES.CASINO_PAGE,authenticate, async ({ params: { casino_id }, body: { casino_username } }, res) => {
+app.post(ROUTES.CASINO_PAGE, authenticate, async ({ params: { casino_id }, body: { casino_username } }, res) => {
 
     try {
-        
+
         const casino = await casinos.findOne({ where: { id: casino_id } });
         if (!casino) return res.json({ 'msg': 'Inavlid casino' });
-        console.log({user_id:res.locals.user});
-        const [user_casino] = await users_cainos.upsert({ user_id: res.locals.user.id, casino_id, casino_username });
+        const [user_casino] = await users_cainos.upsert({ user_id: res.locals.member.id, casino_id, casino_username });
 
         return res.json({ user_casino });
     } catch (err) {
@@ -151,8 +150,7 @@ app.post(ROUTES.CASINO_PAGE,authenticate, async ({ params: { casino_id }, body: 
 
 
 app.get(ROUTES.LOGIN, async (req, res) => res.redirect(DISCORD_OAUTH2_URL));
-// app.get('/auth/discord/success', async (req, res) => res.json({ user: res.locals.user }));
-app.get('*', (req, res) => res.sendFile(path.join(frontend_path, 'index.html')));
+app.get('*', authenticate, (req, res) => res.sendFile(path.join(frontend_path, 'index.html')));
 
 
 sq.sync({ alter: true }).then(async () => {
@@ -167,7 +165,7 @@ sq.sync({ alter: true }).then(async () => {
         { updateOnDuplicate: ['name', 'link'] });
 
     const { port } = app.listen(PORT).address();
-    console.info(`\n\nRunning on\nhttp://${HOST}:${port}`);
+    console.info(`\n\nRunning on\nhttp://localhost:${port}`);
 
     return;
 }).catch((err) => { console.error(err); });

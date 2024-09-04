@@ -7,7 +7,6 @@ import axios from 'axios';
 import TopNavbar  from './components/navbar';
 import Topbar from './components/navbar';
 import { AuthProvider, AuthContext } from './utilities/auth';
-import { URL } from './utilities/api';
 
 function App() {
     // get(endPoints['REDIRECT'], {})
