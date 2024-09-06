@@ -5,6 +5,6 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   define: {
-    API_URL: JSON.stringify('http://192.168.3.100:3000')
+    API_URL: JSON.stringify('https://moray-organic-robin.ngrok-free.app')
   }
 })

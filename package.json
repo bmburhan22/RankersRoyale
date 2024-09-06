@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start": "node ./index",
+    "start": "vite build && node ./index" ,
+    "test":"vite build && nodemon server",
     "dev": "vite",
     "build": "vite build",
-    "prod": "vite build && node ./index",
     "lint": "eslint .",
     "preview": "vite preview"
   },

@@ -4,6 +4,7 @@ WORKDIR /app
 
 COPY docker-package.json package.json
 COPY index.js index.js
+COPY config/ config/
 COPY dist dist
 RUN npm i
 

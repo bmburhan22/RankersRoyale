@@ -1,4 +1,5 @@
 .env
+start-ngrok.bat
 # Logs
 logs
 *.log

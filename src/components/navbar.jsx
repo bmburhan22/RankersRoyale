@@ -7,8 +7,8 @@ import Toolbar from '@mui/material/Toolbar';
 import CssBaseline from '@mui/material/CssBaseline';
 import AdbIcon from '@mui/icons-material/Adb';
 import Typography from '@mui/material/Typography';
-import axios from 'axios';
-import { AuthContext } from '../utilities/auth';
+import { useAuth } from '../utilities/auth';
+import ROUTES  from '../../config/routes';
 const drawerWidth = 240;
 const appBarHeight = 64;
 
@@ -22,26 +22,8 @@ const AppBar = styled(MuiAppBar)(({ theme }) => ({
   }),
 }));
 
-const loginUrl = `${API_URL}/auth/discord/login`;
-
 const Topbar = () => {
-  const { isAuthenticated, username, logout, nickname, globalName, discriminator, displayAvatarURL } = useContext(AuthContext);
-
-  const handleLoginClick = () => {
-    discorlogin();
-  };
-
-  const discorlogin = () => {
-    axios.get(`${API_URL}/redirect`)
-      .then((res) => {
-        if (res.data.token) {
-          // login(res.data.token, res.data.profilePhoto); 
-          window.location.href = loginUrl;
-        }
-      })
-      .catch((error) => console.error(error));
-  };
-
+  const  { isAuthenticated,username, logout, nickname, globalName, discriminator, displayAvatarURL } = useAuth();
   return (
     <Box sx={{ display: 'flex', height: '100vh' }}>
       <CssBaseline />
@@ -50,7 +32,7 @@ const Topbar = () => {
 
           <AdbIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
           <Typography variant="h6" noWrap component="a" href="/" sx={{ mr: 2, display: { xs: 'none', md: 'flex' }, fontFamily: 'monospace', fontWeight: 700, letterSpacing: '.3rem', color: 'inherit', textDecoration: 'none', }}>
-            RankersRoyale GAn
+            RankersRoyale
           </Typography>
 
           <Box sx={{ display: { xs: 'none', sm: 'block' }, ml: 'auto' }}>
@@ -65,7 +47,7 @@ const Topbar = () => {
               </div>
 
             ) : (
-              <a href={loginUrl} style={styles.loginButton} >
+              <a href={ROUTES.LOGIN} style={styles.loginButton} >
                 <FaDiscord style={styles.icon} />
                 Login
               </a>
@@ -77,7 +59,7 @@ const Topbar = () => {
     </Box>
   );
 };
-// onClick={(e) => { e.preventDefault(); handleLoginClick();}}
+
 const styles = {
   loginButton: {
     display: 'flex',

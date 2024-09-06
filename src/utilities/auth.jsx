@@ -62,37 +62,45 @@
 //     return <ItemsContext.Provider value={{ searchTerm, setSearchTerm, items, setItems, showUpdate,orders,setOrders, setRefreshing, fetchItems, itemToUpdate, setItemToUpdate, updateItem, updateQty, sheetRef, refreshing, refreshControl, refreshItems, next }} children={children} />
 // }
 
-import React, { createContext, useState, useEffect } from 'react';
-import Cookie  from 'js-cookie';
+import { createContext, useState, useEffect, useContext } from 'react';
+import Cookie from 'js-cookie';
 import { useNavigate } from 'react-router-dom';
-import { routes } from './routes';
+import { get } from './api';
+import ROUTES from '../../config/routes.js';
+
 export const AuthContext = createContext();
+export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
 
-  const [auth, setAuth] = useState({isAuthenticated: false,});
+  const [auth, setAuth] = useState({ isAuthenticated: false });
   const navigate = useNavigate();
-  useEffect(() => {
+  useEffect(() => { login(); }, []);
+
+  const login = async () => {
     const token = Cookie.get('token');
-    let user=null; 
+    let user = null;
     if (token) {
-        try{ user= JSON.parse(decodeURI(Cookie.get('user')));}catch(e){console.error('Unable to parse user cookie',e);}
-        setAuth({ isAuthenticated: true, token,...user });
-        console.log(auth);
+      try {
+        user = (await get(ROUTES.ME)).data;
+      } catch (e) {
+        console.error('Unable to fetch user', e);
+      }
+      setAuth({ isAuthenticated: true, token, ...user });
     }
-  }, []);
+  }
 
-const logout = ()=>{
-  Cookie.remove('token');
-  Cookie.remove('user');
-  navigate('/', {replace:true});
+  const logout = () => {
+    navigate(ROUTES.HOME, { replace: true });
+    setAuth({isAuthenticated:false})
+    Cookie.remove('token');
+  }
 
-}
   return (
-    <AuthContext.Provider value={{logout, ...auth}}>
+    <AuthContext.Provider value={{ logout, ...auth }}>
       {children}
     </AuthContext.Provider>
   );
-}; 
+};
 
 export default AuthProvider;

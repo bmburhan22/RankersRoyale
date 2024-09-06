@@ -15,7 +15,7 @@ services:
       timeout: 5s
       retries: 5
   app:
-    container_name: rankers-royale-container
+    container_name: rr-container
     image: bmburhan/rankers-royale
     env_file:
       - .env

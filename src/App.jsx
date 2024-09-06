@@ -1,22 +1,17 @@
 import { useState } from 'react'
 import {Navigate, Routes, Route} from 'react-router-dom'
 import './App.css'
-import {get, endPoints } from './utilities/api';
-import { routes } from './utilities/routes';
-import axios from 'axios';
-import TopNavbar  from './components/navbar';
+
 import Topbar from './components/navbar';
-import { AuthProvider, AuthContext } from './utilities/auth';
+import { AuthProvider } from './utilities/auth';
+import  ROUTES  from '../config/routes';
 
 function App() {
-    // get(endPoints['REDIRECT'], {})
-    // axios.get(`${URL}/redirect`).then((res)=>console.log(res.data ));
-    
   return (
     <>
     <AuthProvider>
       <Routes>
-        <Route path={routes.LOGIN} element={<Topbar />} />
+        <Route path={ROUTES.HOME} element={<Topbar />} />
 
         {/* {auth.isAuthenticated ? (
           <Route path="/dashboard" element={<Dashboard />} />

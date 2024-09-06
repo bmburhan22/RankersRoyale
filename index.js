@@ -8,21 +8,17 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import path from 'path';
 import { Client, GatewayIntentBits } from 'discord.js';
+import ROUTES from './config/routes.js';
 dotenv.config();
-const { PORT, DB_URL, TOKEN, JWT_SECRET,   
-    DISCORD_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET,  DISCORD_GUILD_ID } = process.env;
+const { PORT, DB_URL, TOKEN, JWT_SECRET,
+    DISCORD_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET, DISCORD_GUILD_ID } = process.env;
 
 const app = express();
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.login(TOKEN);
 
 const DISCORD_API = 'https://discord.com/api';
-const ROUTES = {
-    ROOT:'/',
-    LOGIN: '/auth/discord/login',
-    CASINOS: '/casinos',
-    CASINO_PAGE: '/casinos/:casino_id'
-}
+
 
 const frontend_path = path.join(path.resolve(), 'dist');
 app.use(express.static(frontend_path));
@@ -33,8 +29,7 @@ const sq = new Sequelize(DB_URL);
 const users = sq.define('users',
     {
         id: { primaryKey: true, type: STRING }
-        , username: { type: STRING },
-        discriminator: { type: STRING },
+        , username: { type: STRING },discriminator: { type: STRING },
     }
     , { freezeTableName: true, timestamps: false });
 const casinos = sq.define('casinos',
@@ -60,30 +55,30 @@ const authenticate = async (req, res, next) => {
         if (err) { return res.status(403).json({ err }); }
         const member = await client.guilds.fetch(DISCORD_GUILD_ID)
             .then(g => g?.members?.fetch(user_id).then(m => m));
-        // cache not updating each time
+        // TODO: cache not updating each time
         if (!member) return res.status(403).json({ err: 'Not a server member' });
         if (!(await member.roles.cache.has(DISCORD_ROLE_ID))) return res.status(403).json({ err: 'Member not verified' });
         res.locals.member = member;
-        const { username, discriminator, globalName } = member.user;
-        const { displayAvatarURL, nickname } = member.toJSON();
-        res.cookie('user', JSON.stringify({ displayAvatarURL, nickname, username, discriminator, globalName }));
+        // const { username, discriminator, globalName } = member.user;
+        // const { displayAvatarURL, nickname } = member.toJSON();
+        // res.cookie('user', JSON.stringify({ displayAvatarURL, nickname, username, discriminator, globalName }),);
         await next();
     });
 };
 
 
 
-const {redirect_uri, client_id} = Object.fromEntries(new URL(DISCORD_OAUTH2_URL).searchParams);
+const { redirect_uri, client_id } = Object.fromEntries(new URL(DISCORD_OAUTH2_URL).searchParams);
 const REDIRECT = new URL(redirect_uri).pathname;
 
 app.get(REDIRECT, async ({ query: { code } }, res) => {
 
     if (!code) return res.json({});
     const params = new URLSearchParams({
-        client_id,redirect_uri,
-            code, client_secret: DISCORD_CLIENT_SECRET,
-            grant_type: 'authorization_code',
-        });
+        client_id, redirect_uri,
+        code, client_secret: DISCORD_CLIENT_SECRET,
+        grant_type: 'authorization_code',
+    });
 
     try {
 
@@ -94,7 +89,7 @@ app.get(REDIRECT, async ({ query: { code } }, res) => {
         if (!isCreated) await users.update(data, { where: { id } });
 
         const token = jwt.sign(id, JWT_SECRET);
-        return res.cookie('token', token).redirect(ROUTES.ROOT);
+        return res.cookie('token', token,{maxAge:30* 24 * 60 * 60 * 1000}).redirect(ROUTES.HOME);
 
     } catch (error) {
         return res.json({ error });
@@ -131,6 +126,31 @@ app.get(ROUTES.CASINO_PAGE, authenticate, async ({ params: { casino_id } }, res)
 
 );
 
+app.get(ROUTES.API, authenticate,async (req, res) => {
+
+    try {
+        return res.json({active:true});
+    } catch (err) {
+        return res.json({ err });
+    }
+}
+
+);
+
+
+app.get(ROUTES.ME, authenticate,async (req, res) => {
+
+    try {
+            const { username, discriminator, globalName } = res.locals.member.user;
+        const { displayAvatarURL, nickname } = res.locals.member.toJSON();
+        return res.json({username, discriminator, nickname, globalName, displayAvatarURL  });
+    } catch (err) {
+        return res.json({ err });
+    }
+}
+
+);
+
 app.post(ROUTES.CASINO_PAGE, authenticate, async ({ params: { casino_id }, body: { casino_username } }, res) => {
 
     try {
@@ -150,7 +170,8 @@ app.post(ROUTES.CASINO_PAGE, authenticate, async ({ params: { casino_id }, body:
 
 
 app.get(ROUTES.LOGIN, async (req, res) => res.redirect(DISCORD_OAUTH2_URL));
-app.get('*', authenticate, (req, res) => res.sendFile(path.join(frontend_path, 'index.html')));
+app.get(ROUTES.HOME, authenticate, (req, res) => res.sendFile(path.join(frontend_path, 'index.html')));
+app.get('*', (req,res)=>res.redirect(ROUTES.HOME));
 
 
 sq.sync({ alter: true }).then(async () => {
