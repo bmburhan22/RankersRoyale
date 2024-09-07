@@ -4,6 +4,7 @@ export default  {
     ME: '/auth/discord/me',
     REDIRECT: '/auth/discord/redirect',
     LOGIN: '/auth/discord/login',
-    CASINOS: '/api/casinos',
-    CASINO_PAGE: '/api/casinos/:casino_id',
+    CASINOS: '/casinos',
+    API_CASINOS: '/api/casinos',
+    API_CASINO_PAGE: '/api/casinos/:casino_id',
 }

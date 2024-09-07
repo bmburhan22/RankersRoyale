@@ -62,38 +62,40 @@
 //     return <ItemsContext.Provider value={{ searchTerm, setSearchTerm, items, setItems, showUpdate,orders,setOrders, setRefreshing, fetchItems, itemToUpdate, setItemToUpdate, updateItem, updateQty, sheetRef, refreshing, refreshControl, refreshItems, next }} children={children} />
 // }
 
-import { createContext, useState, useEffect, useContext } from 'react';
+import { createContext, useState, useEffect, useContext, useLayoutEffect } from 'react';
 import Cookie from 'js-cookie';
-import { useNavigate } from 'react-router-dom';
-import { get } from './api';
+import { get } from './api.js';
 import ROUTES from '../../config/routes.js';
+import { useNavigate } from 'react-router-dom';
 
 export const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
 
-  const [auth, setAuth] = useState({ isAuthenticated: false });
-  const navigate = useNavigate();
-  useEffect(() => { login(); }, []);
+  const [auth, setAuth] = useState (null);
+const navigate = useNavigate();
+
+  useLayoutEffect(() => { login(); }, []);
 
   const login = async () => {
     const token = Cookie.get('token');
-    let user = null;
     if (token) {
       try {
-        user = (await get(ROUTES.ME)).data;
+        setAuth({ token, isAuth:true,
+           ...(await get(ROUTES.ME)).data
+        });
       } catch (e) {
         console.error('Unable to fetch user', e);
       }
-      setAuth({ isAuthenticated: true, token, ...user });
     }
   }
 
   const logout = () => {
-    navigate(ROUTES.HOME, { replace: true });
-    setAuth({isAuthenticated:false})
+  navigate(ROUTES.HOME, {replace:true});
+    setAuth({isAuth:false})
     Cookie.remove('token');
+  
   }
 
   return (

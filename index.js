@@ -12,12 +12,16 @@ import ROUTES from './config/routes.js';
 dotenv.config();
 const { PORT, DB_URL, TOKEN, JWT_SECRET,
     DISCORD_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET, DISCORD_GUILD_ID } = process.env;
-
-const app = express();
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-client.login(TOKEN);
-
-const DISCORD_API = 'https://discord.com/api';
+    
+    const app = express();
+    const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+    client.login(TOKEN);
+    
+    const DISCORD_API = 'https://discord.com/api';
+    const CLIENT_ROUTES=    [
+        ROUTES.HOME,
+        ROUTES.CASINOS,
+    ];
 
 
 const frontend_path = path.join(path.resolve(), 'dist');
@@ -63,6 +67,7 @@ const authenticate = async (req, res, next) => {
         // const { displayAvatarURL, nickname } = member.toJSON();
         // res.cookie('user', JSON.stringify({ displayAvatarURL, nickname, username, discriminator, globalName }),);
         await next();
+        
     });
 };
 
@@ -98,7 +103,7 @@ app.get(REDIRECT, async ({ query: { code } }, res) => {
 
 );
 
-app.get(ROUTES.CASINOS, authenticate, async (req, res) => {
+app.get(ROUTES.API_CASINOS, authenticate, async (req, res) => {
 
     try {
         const user_casino = await users_cainos.findAll({ where: { user_id: res.locals.member.id } });
@@ -110,7 +115,7 @@ app.get(ROUTES.CASINOS, authenticate, async (req, res) => {
 
 );
 
-app.get(ROUTES.CASINO_PAGE, authenticate, async ({ params: { casino_id } }, res) => {
+app.get(ROUTES.API_CASINO_PAGE, authenticate, async ({ params: { casino_id } }, res) => {
 
     try {
         const casino = await casinos.findOne({ where: { id: casino_id } });
@@ -151,12 +156,12 @@ app.get(ROUTES.ME, authenticate,async (req, res) => {
 
 );
 
-app.post(ROUTES.CASINO_PAGE, authenticate, async ({ params: { casino_id }, body: { casino_username } }, res) => {
+app.post(ROUTES.API_CASINO_PAGE, authenticate, async ({ params: { casino_id }, body: { casino_username } }, res) => {
 
     try {
 
         const casino = await casinos.findOne({ where: { id: casino_id } });
-        if (!casino) return res.json({ 'msg': 'Inavlid casino' });
+        if (!casino) return res.json({ 'msg': 'Invalid casino' });
         const [user_casino] = await users_cainos.upsert({ user_id: res.locals.member.id, casino_id, casino_username });
 
         return res.json({ user_casino });
@@ -170,7 +175,9 @@ app.post(ROUTES.CASINO_PAGE, authenticate, async ({ params: { casino_id }, body:
 
 
 app.get(ROUTES.LOGIN, async (req, res) => res.redirect(DISCORD_OAUTH2_URL));
-app.get(ROUTES.HOME, authenticate, (req, res) => res.sendFile(path.join(frontend_path, 'index.html')));
+app.get(
+CLIENT_ROUTES
+    ,authenticate, (req, res) =>res.sendFile(path.join(frontend_path, 'index.html')));
 app.get('*', (req,res)=>res.redirect(ROUTES.HOME));
 
 

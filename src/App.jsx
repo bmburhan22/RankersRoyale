@@ -1,28 +1,25 @@
 import { useState } from 'react'
-import {Navigate, Routes, Route} from 'react-router-dom'
+import { Navigate, Routes, Route, BrowserRouter } from 'react-router-dom'
 import './App.css'
 
-import Topbar from './components/navbar';
-import { AuthProvider } from './utilities/auth';
-import  ROUTES  from '../config/routes';
+import { AuthProvider } from './utils/auth';
+import ROUTES from '../config/routes';
+import { BrowseGalleryTwoTone } from '@mui/icons-material';
+import Home from './screens/Home';
+import Casinos from './screens/Casinos';
 
 function App() {
+  
   return (
-    <>
+    <BrowserRouter >
     <AuthProvider>
-      <Routes>
-        <Route path={ROUTES.HOME} element={<Topbar />} />
-
-        {/* {auth.isAuthenticated ? (
-          <Route path="/dashboard" element={<Dashboard />} />
-        ) : (
-          <Route path={routes.LOGIN} element={<Navigate to="/login" />} />
-        )}
-         */}
-      </Routes>
+        <Routes>
+          <Route path={ROUTES.HOME} element={<Home />} />
+          <Route path={ROUTES.CASINOS} element={<Casinos />} />
+        </Routes>
     </AuthProvider>
-    </>
-  )
+      </BrowserRouter>
+  );
 }
 
 export default App

@@ -7,7 +7,7 @@ import Toolbar from '@mui/material/Toolbar';
 import CssBaseline from '@mui/material/CssBaseline';
 import AdbIcon from '@mui/icons-material/Adb';
 import Typography from '@mui/material/Typography';
-import { useAuth } from '../utilities/auth';
+import { useAuth } from '../utils/auth';
 import ROUTES  from '../../config/routes';
 const drawerWidth = 240;
 const appBarHeight = 64;
@@ -22,11 +22,10 @@ const AppBar = styled(MuiAppBar)(({ theme }) => ({
   }),
 }));
 
-const Topbar = () => {
-  const  { isAuthenticated,username, logout, nickname, globalName, discriminator, displayAvatarURL } = useAuth();
+const Navbar= () => {
+  const  { isAuth,username, logout, nickname, globalName, discriminator, displayAvatarURL } = useAuth();
   return (
-    <Box sx={{ display: 'flex', height: '100vh' }}>
-      <CssBaseline />
+
       <AppBar position="fixed">
         <Toolbar>
 
@@ -36,7 +35,7 @@ const Topbar = () => {
           </Typography>
 
           <Box sx={{ display: { xs: 'none', sm: 'block' }, ml: 'auto' }}>
-            {isAuthenticated ? (
+            { isAuth ? (
 
 
               <div style={{ display: 'flex' }} className='row'>
@@ -56,7 +55,6 @@ const Topbar = () => {
 
         </Toolbar>
       </AppBar>
-    </Box>
   );
 };
 
@@ -82,4 +80,5 @@ const styles = {
   }
 };
 
-export default Topbar;
+
+export default Navbar;
