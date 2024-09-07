@@ -12,16 +12,16 @@ import ROUTES from './config/routes.js';
 dotenv.config();
 const { PORT, DB_URL, TOKEN, JWT_SECRET,
     DISCORD_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET, DISCORD_GUILD_ID } = process.env;
-    
-    const app = express();
-    const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-    client.login(TOKEN);
-    
-    const DISCORD_API = 'https://discord.com/api';
-    const CLIENT_ROUTES=    [
-        ROUTES.HOME,
-        ROUTES.CASINOS,
-    ];
+
+const app = express();
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+client.login(TOKEN);
+
+const DISCORD_API = 'https://discord.com/api';
+const CLIENT_ROUTES = [
+    ROUTES.HOME,
+    ROUTES.CASINOS,
+];
 
 
 const frontend_path = path.join(path.resolve(), 'dist');
@@ -33,7 +33,7 @@ const sq = new Sequelize(DB_URL);
 const users = sq.define('users',
     {
         id: { primaryKey: true, type: STRING }
-        , username: { type: STRING },discriminator: { type: STRING },
+        , username: { type: STRING }, discriminator: { type: STRING },
     }
     , { freezeTableName: true, timestamps: false });
 const casinos = sq.define('casinos',
@@ -56,7 +56,9 @@ const authenticate = async (req, res, next) => {
     const token = req.cookies?.['token'];
     if (!token) { return res.status(401).json({ err: 'Authorization token needed' }); }
     return await jwt.verify(token, JWT_SECRET, async (err, user_id) => {
-        if (err) { return res.status(403).json({ err }); }
+        
+        if (err) { return res.status(401).json({ err }); }
+
         const member = await client.guilds.fetch(DISCORD_GUILD_ID)
             .then(g => g?.members?.fetch(user_id).then(m => m));
         // TODO: cache not updating each time
@@ -66,8 +68,9 @@ const authenticate = async (req, res, next) => {
         // const { username, discriminator, globalName } = member.user;
         // const { displayAvatarURL, nickname } = member.toJSON();
         // res.cookie('user', JSON.stringify({ displayAvatarURL, nickname, username, discriminator, globalName }),);
+       
         await next();
-        
+
     });
 };
 
@@ -94,7 +97,7 @@ app.get(REDIRECT, async ({ query: { code } }, res) => {
         if (!isCreated) await users.update(data, { where: { id } });
 
         const token = jwt.sign(id, JWT_SECRET);
-        return res.cookie('token', token,{maxAge:30* 24 * 60 * 60 * 1000}).redirect(ROUTES.HOME);
+        return res.cookie('token', token, { maxAge: 30 * 24 * 60 * 60 * 1000 }).redirect(ROUTES.HOME);
 
     } catch (error) {
         return res.json({ error });
@@ -131,10 +134,10 @@ app.get(ROUTES.API_CASINO_PAGE, authenticate, async ({ params: { casino_id } }, 
 
 );
 
-app.get(ROUTES.API, authenticate,async (req, res) => {
+app.get(ROUTES.API, authenticate, async (req, res) => {
 
     try {
-        return res.json({active:true});
+        return res.json({ active: true });
     } catch (err) {
         return res.json({ err });
     }
@@ -143,12 +146,12 @@ app.get(ROUTES.API, authenticate,async (req, res) => {
 );
 
 
-app.get(ROUTES.ME, authenticate,async (req, res) => {
+app.get(ROUTES.ME, authenticate, async (req, res) => {
 
     try {
-            const { username, discriminator, globalName } = res.locals.member.user;
+        const { username, discriminator, globalName } = res.locals.member.user;
         const { displayAvatarURL, nickname } = res.locals.member.toJSON();
-        return res.json({username, discriminator, nickname, globalName, displayAvatarURL  });
+        return res.json({ username, discriminator, nickname, globalName, displayAvatarURL });
     } catch (err) {
         return res.json({ err });
     }
@@ -156,15 +159,18 @@ app.get(ROUTES.ME, authenticate,async (req, res) => {
 
 );
 
-app.post(ROUTES.API_CASINO_PAGE, authenticate, async ({ params: { casino_id }, body: { casino_username } }, res) => {
+app.post(ROUTES.API_CASINOS, authenticate, async ({body:{casino_id, casino_username}}, res) => {
 
+    
     try {
 
         const casino = await casinos.findOne({ where: { id: casino_id } });
         if (!casino) return res.json({ 'msg': 'Invalid casino' });
-        const [user_casino] = await users_cainos.upsert({ user_id: res.locals.member.id, casino_id, casino_username });
+        
+        
+        const [ user_casino] = await users_cainos.upsert({ user_id: res.locals.member.id, casino_id, casino_username });
 
-        return res.json({ user_casino });
+        return res.json({  user_casino});
     } catch (err) {
         return res.json({ err });
     }
@@ -176,9 +182,9 @@ app.post(ROUTES.API_CASINO_PAGE, authenticate, async ({ params: { casino_id }, b
 
 app.get(ROUTES.LOGIN, async (req, res) => res.redirect(DISCORD_OAUTH2_URL));
 app.get(
-CLIENT_ROUTES
-    ,authenticate, (req, res) =>res.sendFile(path.join(frontend_path, 'index.html')));
-app.get('*', (req,res)=>res.redirect(ROUTES.HOME));
+    CLIENT_ROUTES,
+    (req, res) => res.sendFile(path.join(frontend_path, 'index.html')));
+app.get('*', (req, res) => res.redirect(ROUTES.HOME));
 
 
 sq.sync({ alter: true }).then(async () => {

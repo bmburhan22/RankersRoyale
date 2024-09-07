@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Navigate, Routes, Route, BrowserRouter } from 'react-router-dom'
-import './App.css'
 
 import { AuthProvider } from './utils/auth';
 import ROUTES from '../config/routes';
