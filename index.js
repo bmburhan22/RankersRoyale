@@ -1,7 +1,7 @@
 
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
-import { Sequelize, STRING } from 'sequelize';
+import { Op, Sequelize, STRING } from 'sequelize';
 import axios from 'axios';
 import express, { json } from 'express';
 import cookieParser from 'cookie-parser';
@@ -10,11 +10,11 @@ import path from 'path';
 import { Client, GatewayIntentBits } from 'discord.js';
 import ROUTES from './config/routes.js';
 dotenv.config();
-const { PORT, DB_URL, TOKEN, JWT_SECRET,
+const { PORT, DB_URL, TOKEN, JWT_SECRET, FIVE_HUNDRED_API,
     DISCORD_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET, DISCORD_GUILD_ID } = process.env;
 
 const app = express();
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
 client.login(TOKEN);
 
 const DISCORD_API = 'https://discord.com/api';
@@ -51,27 +51,41 @@ const headers = {
 app.use(cors());
 app.use(json());
 app.use(cookieParser());
-
+class ErrorCode  extends Error {
+    constructor(code, message) {
+      super(message); 
+      this.code = code;
+      this.name = this.constructor.name; 
+    }
+  }
+  
 const authenticate = async (req, res, next) => {
-    const token = req.cookies?.['token'];
-    if (!token) { return res.status(401).json({ err: 'Authorization token needed' }); }
-    return await jwt.verify(token, JWT_SECRET, async (err, user_id) => {
+    try {
+        const token = req.cookies?.['token'];
+        if (!token) {
+            throw new ErrorCode(401, 'Authorization token needed' );
         
-        if (err) { return res.status(401).json({ err }); }
+        }
 
-        const member = await client.guilds.fetch(DISCORD_GUILD_ID)
-            .then(g => g?.members?.fetch(user_id).then(m => m));
-        // TODO: cache not updating each time
-        if (!member) return res.status(403).json({ err: 'Not a server member' });
-        if (!(await member.roles.cache.has(DISCORD_ROLE_ID))) return res.status(403).json({ err: 'Member not verified' });
+        const user_id = jwt.verify(token, JWT_SECRET, (err, user_id) => {
+            if (err) throw new ErrorCode(401, err.toString() );
+            return user_id;
+        });
+
+        const guild = await client.guilds.fetch(DISCORD_GUILD_ID)
+
+        const member = await guild?.members?.fetch(user_id).catch(err=> {
+             throw new ErrorCode(403,err.toString()) ;
+        });
+        if (!member) throw new ErrorCode(403, 'Not a server member' );
+        if (!member.roles.cache.has(DISCORD_ROLE_ID)) throw new ErrorCode(403, 'Member not verified' );
         res.locals.member = member;
-        // const { username, discriminator, globalName } = member.user;
-        // const { displayAvatarURL, nickname } = member.toJSON();
-        // res.cookie('user', JSON.stringify({ displayAvatarURL, nickname, username, discriminator, globalName }),);
-       
         await next();
 
-    });
+    } catch (err) {
+        console.log({err});
+        return res.status(err.code).json({ err:err.toString() });
+    }
 };
 
 
@@ -99,8 +113,8 @@ app.get(REDIRECT, async ({ query: { code } }, res) => {
         const token = jwt.sign(id, JWT_SECRET);
         return res.cookie('token', token, { maxAge: 30 * 24 * 60 * 60 * 1000 }).redirect(ROUTES.HOME);
 
-    } catch (error) {
-        return res.json({ error });
+    } catch (err) {
+        return res.json({ err: err.toString() });
     }
 }
 
@@ -111,8 +125,8 @@ app.get(ROUTES.API_CASINOS, authenticate, async (req, res) => {
     try {
         const user_casino = await users_cainos.findAll({ where: { user_id: res.locals.member.id } });
         return res.json({ user_casino });
-    } catch (error) {
-        return res.json({ error });
+    } catch (err) {
+        return res.json({ err });
     }
 }
 
@@ -134,51 +148,88 @@ app.get(ROUTES.API_CASINO_PAGE, authenticate, async ({ params: { casino_id } }, 
 
 );
 
-app.get(ROUTES.API, authenticate, async (req, res) => {
-
-    try {
-        return res.json({ active: true });
-    } catch (err) {
-        return res.json({ err });
-    }
+app.get(ROUTES.API, authenticate, async (req, res) => res.json({ active: true }));
+const memberToUser = (member) => {
+    const { username, discriminator, globalName } = member.user;
+    const { displayAvatarURL, nickname } = member.toJSON();
+    return { username, discriminator, globalName, nickname, displayAvatarURL };
 }
-
-);
-
 
 app.get(ROUTES.ME, authenticate, async (req, res) => {
-
     try {
-        const { username, discriminator, globalName } = res.locals.member.user;
-        const { displayAvatarURL, nickname } = res.locals.member.toJSON();
-        return res.json({ username, discriminator, nickname, globalName, displayAvatarURL });
+        return res.json(memberToUser(res.locals.member));
     } catch (err) {
-        return res.json({ err });
+        return res.json({ err: err.toString() });
     }
-}
+});
 
-);
+app.post(ROUTES.API_CASINOS, authenticate, async ({ body: { casino_id, casino_username } }, res) => {
 
-app.post(ROUTES.API_CASINOS, authenticate, async ({body:{casino_id, casino_username}}, res) => {
 
-    
     try {
 
         const casino = await casinos.findOne({ where: { id: casino_id } });
         if (!casino) return res.json({ 'msg': 'Invalid casino' });
-        
-        
-        const [ user_casino] = await users_cainos.upsert({ user_id: res.locals.member.id, casino_id, casino_username });
 
-        return res.json({  user_casino});
+
+        const [user_casino] = await users_cainos.upsert({ user_id: res.locals.member.id, casino_id, casino_username });
+
+        return res.json({ user_casino });
     } catch (err) {
         return res.json({ err });
     }
+});
+
+
+app.get(ROUTES.API_MEMBERS, async (req, res) => {
+    try {
+        const members = await client.guilds.fetch(DISCORD_GUILD_ID)
+            .then(g => g.members.fetch())
+            .then(m => m.filter(m => m.roles.cache.has(DISCORD_ROLE_ID))
+                .map(m => m.id)
+            );
+        const casino_usernames = await users_cainos.findAll({ where: { user_id: { [Op.in]: members } } });
+        return res.json({ casino_usernames });
+    } catch (err) {
+        return res.json({ err: err.toString() });
+    }
+});
+
+const casinoUsernameFiltered = async (casino_id) => {
+    try {
+        const members = await client.guilds.fetch(DISCORD_GUILD_ID)
+            .then(g => g.members.fetch())
+            .then(m => m.filter(m => m.roles.cache.has(DISCORD_ROLE_ID))
+                .map(m => m.id)
+            );
+        const casino_usernames = await users_cainos.findAll({ where: { user_id: { [Op.in]: members } } });
+        return casino_usernames.filter(c => c.casino_id == casino_id).map(c => c.casino_username);
+
+    } catch (err) {
+        console.log({ err: err.toString() });
+
+        return [];
+    }
 }
 
+app.get(ROUTES.API_500_LEAD, async (req, res) => {
+    try {
+        const casino_usernames = await casinoUsernameFiltered('500casino');
+        const r = await axios.get(FIVE_HUNDRED_API);
+        let { places, detailed } = r.data;
+        places = places
+            .filter(p => casino_usernames.includes(p.userId))
+            .map(p => {
+                return { ...p, ...detailed[p.userId] };
+            })
+        return res.json({ places });
+    } catch (err) {
+        return res.json({ err: err.toString() });
+    }
+}
+
+
 );
-
-
 
 app.get(ROUTES.LOGIN, async (req, res) => res.redirect(DISCORD_OAUTH2_URL));
 app.get(
