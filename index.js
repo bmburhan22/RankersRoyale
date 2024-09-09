@@ -1,7 +1,7 @@
 
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
-import { Op, Sequelize, STRING } from 'sequelize';
+import { INTEGER, Op, Sequelize, STRING, where } from 'sequelize';
 import axios from 'axios';
 import express, { json } from 'express';
 import cookieParser from 'cookie-parser';
@@ -9,8 +9,9 @@ import cors from 'cors';
 import path from 'path';
 import { Client, GatewayIntentBits } from 'discord.js';
 import ROUTES from './config/routes.js';
+import { rm } from 'fs';
 dotenv.config();
-const { PORT, DB_URL, TOKEN, JWT_SECRET, FIVE_HUNDRED_API,
+const { PORT, DB_URL, TOKEN, JWT_SECRET, API_KEY_500,
     DISCORD_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET, DISCORD_GUILD_ID } = process.env;
 
 const app = express();
@@ -18,6 +19,7 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 client.login(TOKEN);
 
 const DISCORD_API = 'https://discord.com/api';
+const _500_API_URL = "https://500.casino/api/rewards/affiliate-users";
 const CLIENT_ROUTES = [
     ROUTES.HOME,
     ROUTES.CASINOS,
@@ -39,8 +41,11 @@ const users = sq.define('users',
 const casinos = sq.define('casinos',
     { id: { primaryKey: true, type: STRING }, name: { type: STRING }, link: { type: STRING }, }
     , { freezeTableName: true, timestamps: false });
-const users_cainos = sq.define('users_casinos',
-    { user_id: { primaryKey: true, type: STRING }, casino_id: { type: STRING, primaryKey: true }, casino_username: { type: STRING }, }
+const users_casinos = sq.define('users_casinos',
+    {
+        user_id: { primaryKey: true, type: STRING }, casino_id: { type: STRING, primaryKey: true }, casino_username: { type: STRING },
+        prev_wager_checkpoint: { type: INTEGER }, curr_wager_checkpoint: { type: INTEGER }
+    }
     , { freezeTableName: true, timestamps: false });
 const headers = {
     'Content-Type': 'application/x-www-form-urlencoded',
@@ -51,40 +56,40 @@ const headers = {
 app.use(cors());
 app.use(json());
 app.use(cookieParser());
-class ErrorCode  extends Error {
+class ErrorCode extends Error {
     constructor(code, message) {
-      super(message); 
-      this.code = code;
-      this.name = this.constructor.name; 
+        super(message);
+        this.code = code;
+        this.name = this.constructor.name;
     }
-  }
-  
+}
+
 const authenticate = async (req, res, next) => {
     try {
         const token = req.cookies?.['token'];
         if (!token) {
-            throw new ErrorCode(401, 'Authorization token needed' );
-        
+            throw new ErrorCode(401, 'Authorization token needed');
+
         }
 
         const user_id = jwt.verify(token, JWT_SECRET, (err, user_id) => {
-            if (err) throw new ErrorCode(401, err.toString() );
+            if (err) throw new ErrorCode(401, err.toString());
             return user_id;
         });
 
         const guild = await client.guilds.fetch(DISCORD_GUILD_ID)
 
-        const member = await guild?.members?.fetch(user_id).catch(err=> {
-             throw new ErrorCode(403,err.toString()) ;
+        const member = await guild?.members?.fetch(user_id).catch(err => {
+            throw new ErrorCode(403, err.toString());
         });
-        if (!member) throw new ErrorCode(403, 'Not a server member' );
-        if (!member.roles.cache.has(DISCORD_ROLE_ID)) throw new ErrorCode(403, 'Member not verified' );
+        if (!member) throw new ErrorCode(403, 'Not a server member');
+        if (!member.roles.cache.has(DISCORD_ROLE_ID)) throw new ErrorCode(403, 'Member not verified');
         res.locals.member = member;
         await next();
 
     } catch (err) {
-        console.log({err});
-        return res.status(err.code).json({ err:err.toString() });
+        console.log({ err });
+        return res.status(err.code).json({ err: err.toString() });
     }
 };
 
@@ -123,23 +128,7 @@ app.get(REDIRECT, async ({ query: { code } }, res) => {
 app.get(ROUTES.API_CASINOS, authenticate, async (req, res) => {
 
     try {
-        const user_casino = await users_cainos.findAll({ where: { user_id: res.locals.member.id } });
-        return res.json({ user_casino });
-    } catch (err) {
-        return res.json({ err });
-    }
-}
-
-);
-
-app.get(ROUTES.API_CASINO_PAGE, authenticate, async ({ params: { casino_id } }, res) => {
-
-    try {
-        const casino = await casinos.findOne({ where: { id: casino_id } });
-        if (!casino) return res.json({ 'msg': 'Invalid casino' });
-
-        const user_casino = await users_cainos.findOne({ where: { user_id: res.locals.member.id, casino_id } });
-
+        const user_casino = await users_casinos.findAll({ where: { user_id: res.locals.member.id } });
         return res.json({ user_casino });
     } catch (err) {
         return res.json({ err });
@@ -172,7 +161,7 @@ app.post(ROUTES.API_CASINOS, authenticate, async ({ body: { casino_id, casino_us
         if (!casino) return res.json({ 'msg': 'Invalid casino' });
 
 
-        const [user_casino] = await users_cainos.upsert({ user_id: res.locals.member.id, casino_id, casino_username });
+        const [user_casino] = await users_casinos.upsert({ user_id: res.locals.member.id, casino_id, casino_username });
 
         return res.json({ user_casino });
     } catch (err) {
@@ -188,23 +177,24 @@ app.get(ROUTES.API_MEMBERS, async (req, res) => {
             .then(m => m.filter(m => m.roles.cache.has(DISCORD_ROLE_ID))
                 .map(m => m.id)
             );
-        const casino_usernames = await users_cainos.findAll({ where: { user_id: { [Op.in]: members } } });
+        const casino_usernames = await users_casinos.findAll({ where: { user_id: { [Op.in]: members } } });
         return res.json({ casino_usernames });
     } catch (err) {
         return res.json({ err: err.toString() });
     }
 });
 
-const casinoUsernameFiltered = async (casino_id) => {
+const casinoUsernameFiltered = async (casino_id, casino_user_ids) => {
     try {
         const members = await client.guilds.fetch(DISCORD_GUILD_ID)
             .then(g => g.members.fetch())
             .then(m => m.filter(m => m.roles.cache.has(DISCORD_ROLE_ID))
                 .map(m => m.id)
             );
-        const casino_usernames = await users_cainos.findAll({ where: { user_id: { [Op.in]: members } } });
-        return casino_usernames.filter(c => c.casino_id == casino_id).map(c => c.casino_username);
-
+        return (await users_casinos.findAll(
+            { where: { casino_id, user_id: { [Op.in]: members }, casino_username: { [Op.in]: casino_user_ids } } }
+        )
+        );
     } catch (err) {
         console.log({ err: err.toString() });
 
@@ -212,29 +202,64 @@ const casinoUsernameFiltered = async (casino_id) => {
     }
 }
 
-app.get(ROUTES.API_500_LEAD, async (req, res) => {
+// app.get(ROUTES.API_500_LEAD, async (req, res) => {
+//     try {
+//         const casino_usernames = await casinoUsernameFiltered('500casino');
+//         const r = await axios.get(FIVE_HUNDRED_API);
+//         let { places, detailed } = r.data;
+//         places = places
+//             .filter(p => casino_usernames.includes(p.userId))
+//             .map(p => {
+//                 return { ...p, ...detailed[p.userId] };
+//             })
+//         return res.json({ places });
+//     } catch (err) {
+//         return res.json({ err: err.toString() });
+//     }
+// });
+
+app.get(ROUTES.API_500, async (req, res) => {
     try {
-        const casino_usernames = await casinoUsernameFiltered('500casino');
-        const r = await axios.get(FIVE_HUNDRED_API);
-        let { places, detailed } = r.data;
-        places = places
-            .filter(p => casino_usernames.includes(p.userId))
-            .map(p => {
-                return { ...p, ...detailed[p.userId] };
-            })
-        return res.json({ places });
+        const r = await axios.post(_500_API_URL,
+            { sorting: { totalRevenue: -1 }, },
+            { headers: { 'x-500-auth': API_KEY_500 } });
+
+        let { results } = r.data;
+        const casino_user_ids = results.map(r => r._id);
+        const filtered = await casinoUsernameFiltered('500casino', casino_user_ids);
+
+         results = results.map(r => {
+            const { user_id, curr_wager_checkpoint, prev_wager_checkpoint } = filtered.find(f => f.casino_username == r._id);
+            return { waged: r.totalPlayed - (curr_wager_checkpoint ?? r.totalPlayed), 
+                ...r, user_id, prev_wager_checkpoint, curr_wager_checkpoint, };
+        }).toSorted((a,b)=>b.waged-a.waged);
+        return res.json({ results });
     } catch (err) {
         return res.json({ err: err.toString() });
     }
-}
+});
 
-
-);
-
+app.get(ROUTES.API_500_START_CYCLE, async (req, res) => {
+    try {
+        const r = await axios.post(_500_API_URL,
+            { sorting: { totalPlayed: -1 } },
+            { headers: { 'x-500-auth': API_KEY_500 } });
+        await r.data.results.forEach(async r => {
+            await users_casinos.findOne({ where: { casino_username: r._id }, })
+                .then(async uc => {
+                    uc.prev_wager_checkpoint = uc.curr_wager_checkpoint;
+                    uc.curr_wager_checkpoint = r.totalPlayed;
+                    await uc.save();
+                })
+        }
+        )
+        return res.json({ message: 'updated wage' });
+    } catch (err) {
+        return res.json({ err: err.toString() });
+    }
+});
 app.get(ROUTES.LOGIN, async (req, res) => res.redirect(DISCORD_OAUTH2_URL));
-app.get(
-    CLIENT_ROUTES,
-    (req, res) => res.sendFile(path.join(frontend_path, 'index.html')));
+app.get(CLIENT_ROUTES, (req, res) => res.sendFile(path.join(frontend_path, 'index.html')));
 app.get('*', (req, res) => res.redirect(ROUTES.HOME));
 
 

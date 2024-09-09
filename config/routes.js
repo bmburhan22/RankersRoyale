@@ -6,7 +6,7 @@ export default  {
     LOGIN: '/auth/discord/login',
     CASINOS: '/casinos',
     API_CASINOS: '/api/casinos',
-    API_CASINO_PAGE: '/api/casinos/:casino_id',
     API_MEMBERS:'/api/members',
-    API_500_LEAD:'/api/500casino'
+    API_500:'/api/500casino',
+    API_500_START_CYCLE:'/api/500casino/start-cycle',
 }

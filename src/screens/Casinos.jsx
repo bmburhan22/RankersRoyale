@@ -3,7 +3,7 @@ import Navbar from '../components/Navbar';
 import { useAuth } from '../utils/auth';
 import { useLocation, useNavigate } from 'react-router-dom';
 import ROUTES from '../../config/routes';
-import { CssBaseline, Box, TextField, Button } from '@mui/material';
+import { CssBaseline, Box, TextField, Button, Divider } from '@mui/material';
 
 import { Row, Col, Container } from 'react-bootstrap';
 
@@ -18,9 +18,9 @@ const Casinos = () => {
   const [lead500Casino, setLead500Casino] = useState([]);
 
   const getLead500Casino = async () => {
-    const res = await get(ROUTES.API_500_LEAD);
+    const res = await get(ROUTES.API_500);
     if (res.status != 200) { setLead500Casino([]); return; }
-    setLead500Casino(res.data.places);
+    setLead500Casino(res.data.results);
 
   }
   const getCasinoMembers = async () => {
@@ -59,9 +59,11 @@ const Casinos = () => {
           <Col>
             <h5>
 
-              {JSON.stringify(lead500Casino.slice(0, 10))}
+              {JSON.stringify(lead500Casino)}
 
             </h5>
+            <Divider/>
+            <br/><br/>
             <h6>
 
               {JSON.stringify(members)}
