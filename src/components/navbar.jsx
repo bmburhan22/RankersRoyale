@@ -8,7 +8,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import AdbIcon from '@mui/icons-material/Adb';
 import Typography from '@mui/material/Typography';
 import { useAuth } from '../utils/auth';
-import ROUTES  from '../../config/routes';
+import ROUTES  from '../../utils/routes';
 const drawerWidth = 240;
 const appBarHeight = 64;
 

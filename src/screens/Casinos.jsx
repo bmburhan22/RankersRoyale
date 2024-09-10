@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useLayoutEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../utils/auth';
 import { useLocation, useNavigate } from 'react-router-dom';
-import ROUTES from '../../config/routes';
+import ROUTES from '../../utils/routes';
 import { CssBaseline, Box, TextField, Button, Divider } from '@mui/material';
 
 import { Row, Col, Container } from 'react-bootstrap';
@@ -18,20 +18,20 @@ const Casinos = () => {
   const [lead500Casino, setLead500Casino] = useState([]);
 
   const getLead500Casino = async () => {
-    const res = await get(ROUTES.API_500);
+    const res = await get(ROUTES._500CASINOS);
     if (res.status != 200) { setLead500Casino([]); return; }
     setLead500Casino(res.data.results);
 
   }
   const getCasinoMembers = async () => {
-    const res = await get(ROUTES.API_MEMBERS);
+    const res = await get(ROUTES.MEMBERS);
     if (res.status != 200) { setMembers([]); return; }
     setMembers(res.data.casino_usernames);
   }
 
-  const setCasinoUsername = (casinoUsername) => post(ROUTES.API_CASINOS, casinoUsername);
+  const setCasinoUsername = (casinoUsername) => post(ROUTES.CASINOS, casinoUsername);
   const getCasinoUsername = async () => {
-    const res = await get(ROUTES.API_CASINOS);
+    const res = await get(ROUTES.CASINOS);
     if (res.status != 200) { setCasinoData(CASINO_OBJ); return; }
     setCasinoData(
       res.data.user_casino?.reduce((acc, rec) => {
