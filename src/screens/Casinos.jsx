@@ -26,23 +26,25 @@ const Casinos = () => {
   const getCasinoMembers = async () => {
     const res = await get(ROUTES.MEMBERS);
     if (res.status != 200) { setMembers([]); return; }
-    setMembers(res.data.casino_usernames);
+    setMembers(res.data.casino_user_ids);
   }
 
-  const setCasinoUsername = (casinoUsername) => post(ROUTES.CASINOS, casinoUsername);
-  const getCasinoUsername = async () => {
+  const setCasinoUserId = (casinoUserId) => post(ROUTES.CASINOS, casinoUserId);
+  const getCasinoUserId = async () => {
     const res = await get(ROUTES.CASINOS);
+    console.log({st:res.status, ob:res.data});
+    
     if (res.status != 200) { setCasinoData(CASINO_OBJ); return; }
     setCasinoData(
       res.data.user_casino?.reduce((acc, rec) => {
-        acc[rec.casino_id] = rec.casino_username;
+        acc[rec.casino_id] = rec.casino_user_ids;
         return acc;
       }, {}))
   }
 
 
   useEffect(() => {
-    getCasinoUsername();
+    getCasinoUserId();
     getCasinoMembers();
     getLead500Casino();
   }, []);
@@ -74,14 +76,14 @@ const Casinos = () => {
               onChange={e => setInputData(v => { return { ...v, '500casino': e.target.value } })
               } />
 
-            <Button variant='contained' onClick={() => setCasinoUsername({ casino_id: '500casino', casino_username: inputData['500casino'] })}>Submit</Button>
+            <Button variant='contained' onClick={() => setCasinoUserId({ casino_id: '500casino', casino_user_id: inputData['500casino'] })}>Submit</Button>
           </Col>
           <Col>
             <h3>{casinoData?.bet1}</h3>
 
             <TextField label='bet1 username' variant='outlined'
               onChange={e => setInputData(v => { return { ...v, bet1: e.target.value } })} />
-            <Button variant='contained' onClick={() => setCasinoUsername({ casino_id: 'bet1', casino_username: inputData.bet1 })}>Submit</Button>
+            <Button variant='contained' onClick={() => setCasinoUserId({ casino_id: 'bet1', casino_user_id: inputData.bet1 })}>Submit</Button>
           </Col>
         </Row>
         <Col>
