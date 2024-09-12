@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
     // console.log({ method: 'post', status: res.status, statusText: res.statusText ,data});
 
     if (res.status != 200) await validateAuth();
-    return res;
+    return res; 
   }
   const [auth, setAuth] = useState(null);
   const navigate = useNavigate();

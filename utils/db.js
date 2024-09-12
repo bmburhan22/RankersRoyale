@@ -17,9 +17,9 @@ export const users_casinos = sq.define('users_casinos',
     , { freezeTableName: true, timestamps: false });
 export const getUserById =async(id)=> await users.findOne({ where: { id } });
 export const getCasinosByUserIds = async (userIds)=>await users_casinos.findAll({ where: {  user_id: { [Op.in]: userIds } } });
-export const getUsersCasino = async (casino_id,userIds,casinoUserIds)=>await users_casinos.findAll({where:{
-        casino_id,user_id:{[Op.in]:userIds} ,casino_user_id:{[Op.in]:casinoUserIds}, 
-    },}); 
+// export const getUsersCasino = async (casino_id,userIds,casinoUserIds)=>await users_casinos.findAll({where:{
+//         casino_id,user_id:{[Op.in]:userIds} ,casino_user_id:{[Op.in]:casinoUserIds}, 
+    // },}); 
 sq.sync({ alter: true }).then(async () => {
     // static casino data
     await casinos.bulkCreate(

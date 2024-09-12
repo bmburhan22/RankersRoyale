@@ -9,5 +9,5 @@ export default  {
     CASINOS: '/api/casinos',
     RESET_LEADERBOARD:'/api/reset-leaderboard',
     REDEEM:'/api/redeem',
-    _500CASINOS:'/api/casinos/500casinos',
+    _500CASINO:'/api/casinos/500casino',
 }

@@ -3,9 +3,9 @@ import Navbar from '../components/Navbar';
 import { useAuth } from '../utils/auth';
 import { useLocation, useNavigate } from 'react-router-dom';
 import ROUTES from '../../utils/routes';
-import { CssBaseline, Box, TextField, Button, Divider } from '@mui/material';
+import { CssBaseline, Box, TextField, Button, Divider, Select, MenuItem, InputLabel } from '@mui/material';
 
-import { Row, Col, Container } from 'react-bootstrap';
+import { Row, Col, Container, FormControl } from 'react-bootstrap';
 
 const Casinos = () => {
   const CASINO_OBJ = { bet1: null, '500casino': null };
@@ -16,7 +16,9 @@ const Casinos = () => {
   const [casinoData, setCasinoData] = useState(CASINO_OBJ);
   const [members, setMembers] = useState([]);
   const [lead500Casino, setLead500Casino] = useState([]);
-
+  const [amount, setAmount] = useState(0);
+  const [balanceType, setBalanceType] = useState('usdt');
+  const [casinoId, setCasinoId] = useState('500casino');
   const getLead500Casino = async () => {
     const res = await get(ROUTES._500CASINOS);
     if (res.status != 200) { setLead500Casino([]); return; }
@@ -32,8 +34,8 @@ const Casinos = () => {
   const setCasinoUserId = (casinoUserId) => post(ROUTES.CASINOS, casinoUserId);
   const getCasinoUserId = async () => {
     const res = await get(ROUTES.CASINOS);
-    console.log({st:res.status, ob:res.data});
-    
+    console.log({ st: res.status, ob: res.data });
+
     if (res.status != 200) { setCasinoData(CASINO_OBJ); return; }
     setCasinoData(
       res.data.user_casino?.reduce((acc, rec) => {
@@ -42,6 +44,7 @@ const Casinos = () => {
       }, {}))
   }
 
+  const sendBalance = async()=>await post(ROUTES.REDEEM, {amount,balanceType,casinoId}) .catch(alert);
 
   useEffect(() => {
     getCasinoUserId();
@@ -64,13 +67,25 @@ const Casinos = () => {
               {JSON.stringify(lead500Casino)}
 
             </h5>
-            <Divider/>
-            <br/><br/>
+            <Divider />
+            <br /><br />
             <h6>
 
               {JSON.stringify(members)}
 
             </h6>
+
+            
+              <TextField label='Amount' type='number' variant='outlined' value={amount} onChange={({target:{value}})=>setAmount(value)} ></TextField>
+              <Select label='Currency' variant='outlined' value={balanceType} onChange={({target:{value}})=>setBalanceType(value)} >
+                <MenuItem value='usdt'>USDT</MenuItem>
+                <MenuItem value='eth'>ETH</MenuItem>
+              </Select>
+              <Select label='Destination wallet' variant='outlined' value={casinoId} onChange={({target:{value}})=>setCasinoId(value)} >
+                <MenuItem value='500casino'>500casino</MenuItem>
+                <MenuItem value='500casino'>CSGO500</MenuItem>
+              </Select>
+            <Button variant='contained' onClick={sendBalance}>Send</Button>
             <h3>{casinoData?.['500casino']}</h3>
             <TextField label='500casino username' variant='outlined'
               onChange={e => setInputData(v => { return { ...v, '500casino': e.target.value } })
