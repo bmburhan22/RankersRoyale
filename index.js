@@ -8,7 +8,7 @@ import cors from 'cors';
 import path from 'path';
 import ROUTES from './utils/routes.js';
 import bot from './utils/discordBot.js';
-import { casinos, getCasinosByUserIds, getUserById,  users, users_casinos } from './utils/db.js';
+import { casinos, getCasinosByUserIds, getSettings, getSettingsNum, getUserById, users, users_casinos } from './utils/db.js';
 import { Op } from 'sequelize';
 dotenv.config();
 const { PORT, JWT_SECRET, API_KEY_500, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET } = process.env;
@@ -91,7 +91,7 @@ app.get(REDIRECT, async ({ query: { code } }, res) => {
 });
 
 const getCasinoUsers = async (casinoIds = Object.keys(CASINO_OPS)) => {
-    let casinoData = {};
+    let casinoData = { total: {}, 'casinos': {} };
     const userIds = (await bot.fetchVerifiedMembers()).map(m => m.id); // discord verified userIds 
 
     for await (let casinoId of casinoIds) {
@@ -103,10 +103,18 @@ const getCasinoUsers = async (casinoIds = Object.keys(CASINO_OPS)) => {
                     user_id: { [Op.in]: userIds } // filter by user_id in discord verified userIds 
                 }
             });
-            c.waged = c.total_wager - (c.casino_user?.curr_wager_checkpoint ?? c.total_wager);
+
+            c.wager = c.total_wager - (c.casino_user?.curr_wager_checkpoint ?? c.total_wager);
+            c.wagerPerPoint = await getSettingsNum('wagerPerPoint');
+            c.user_id = c.casino_user?.user_id;
             c.user = await getUserById(c.casino_user?.user_id ?? null);
-        }
-        casinoData[casinoId] = casinoUsers.filter(cu => cu.casino_user != null && cu.user != null).toSorted((a, b) => b.waged - a.waged)
+            if (casinoData.total[c.user_id]) {
+                casinoData.total[c.user_id].wager += c.wager;
+                casinoData.total[c.user_id].total_wager += c.total_wager;
+            }
+            else casinoData.total[c.user_id]={...c}}
+        
+        casinoData['casinos'][casinoId] = casinoUsers.filter(cu => cu.casino_user != null && cu.user != null).toSorted((a, b) => b.wager - a.wager)
     }
     return casinoData;
 }
@@ -145,22 +153,22 @@ app.post(ROUTES.CASINOS, authenticate, async ({ body: { casino_id, casino_user_i
     }
 });
 
-app.post(ROUTES.REDEEM, authenticate, async ({body:{casinoId, amount, balanceType}}, res) => {
+app.post(ROUTES.REDEEM, authenticate, async ({ body: { casinoId, amount, balanceType } }, res) => {
     try {
         const user = await getUserById(res.locals.member.id);
-        if (amount>100)throw new ErrorCode(400, 'Redeem amount must not be more than 100');
-        if (amount<1)throw new ErrorCode(400, 'Redeem amount must be atleast 1');
-        if (user.points <= amount) throw new ErrorCode(400, 'Insufficient points');
-        const { casino_user_id } = await users_casinos.findOne({ where: { user_id:user.id, casino_id:casinoId } });
+        if (amount > 100) throw new ErrorCode(400, 'Redeem amount must not be more than 100');
+        if (amount < 1) throw new ErrorCode(400, 'Redeem amount must be atleast 1');
+        if (user.total_points <= amount) throw new ErrorCode(400, 'Insufficient points');
+        const { casino_user_id } = await users_casinos.findOne({ where: { user_id: user.id, casino_id: casinoId } });
         console.log({ casino_user_id, points: user.points });
         const r = await CASINO_OPS[casinoId].sendBalance(casino_user_id, amount, balanceType);
         if (r.data.success) {
-            user.points-=amount;
+            user.total_points -= amount;
             await user.save();
         }
         return res.json(r.data);
     } catch (err) {
-        return res.status(err.code).json({  err: err.toString() });
+        return res.status(err.code).json({ err: err.toString() });
     }
 });
 
@@ -190,12 +198,12 @@ app.get('/api/setwager', authenticate, async ({ query: { casino_id, curr, prev }
 app.get(ROUTES.RESET_LEADERBOARD, async (req, res) => {
     try {
         const casinoData = await getCasinoUsers();
-        for (let casinoUsers of Object.values(casinoData)) {
+        for await (let casinoUsers of Object.values(casinoData.casinos)) {
             for await (let { total_wager, casino_user: cu, user } of casinoUsers) {
                 cu.prev_wager_checkpoint = cu.curr_wager_checkpoint ?? cu.prev_wager_checkpoint;
                 cu.curr_wager_checkpoint = total_wager;
                 await cu.save();
-                await user.increment({ points: Math.max(0, cu.curr_wager_checkpoint - (cu.prev_wager_checkpoint ?? cu.curr_wager_checkpoint)) });
+                await user.increment({ total_points: Math.max(0, cu.curr_wager_checkpoint - (cu.prev_wager_checkpoint ?? cu.curr_wager_checkpoint)) });
             }
         }
         return res.json({ message: 'Wages reset' });
@@ -219,12 +227,12 @@ console.info(`\n\nRunning on\nhttp://localhost:${port}`);
 //         const userIds = (await bot.fetchVerifiedMembers()).map(m => m.id);
 //         return await getUsersCasino(
 //             // users_casinos.findAll(
-//             // { where: { 
+//             // { where: {
 //             casino_id,
-//             // , user_id: { [Op.in]: 
+//             // , user_id: { [Op.in]:
 //             userIds,
 //             casino_user_ids,
-//             //  }, casino_username: { [Op.in]: 
+//             //  }, casino_username: { [Op.in]:
 //             //  } } }
 
 //         );
