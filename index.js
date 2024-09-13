@@ -11,13 +11,14 @@ import bot from './utils/discordBot.js';
 import { casinos, getCasinosByUserIds, getSettings, getSettingsNum, getUserById, users, users_casinos } from './utils/db.js';
 import { Op } from 'sequelize';
 dotenv.config();
-const { PORT, JWT_SECRET, API_KEY_500, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET } = process.env;
+const { PORT, JWT_SECRET, API_KEY_500,DISCORD_ADMIN_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET } = process.env;
 
 
 const DISCORD_API = 'https://discord.com/api';
 const CLIENT_ROUTES = [
     ROUTES.HOME,
     ROUTES.CASINOS_PAGE,
+    ROUTES.ADMIN_HOME,
 ];
 
 const app = express();
@@ -74,7 +75,7 @@ const authenticate = async (req, res, next) => {
 
         const member = (await bot.fetchVerifiedMembers()).find(m => m.id == user_id)
         if (!member) throw new ErrorCode(403, 'Not a verified server member');
-
+        member.isAdmin=member.roles.cache.has(DISCORD_ADMIN_ROLE_ID)
         res.locals.member = member;
         await next();
 
@@ -146,8 +147,8 @@ app.get(ROUTES.CASINOS, async (req, res) => {
 
 const memberToUser = (member) => {
     const { username, discriminator, globalName } = member.user;
-    const { displayAvatarURL, nickname } = member.toJSON();
-    return { username, discriminator, globalName, nickname, displayAvatarURL };
+    const { displayAvatarURL, nickname, isAdmin } = member.toJSON();
+    return {isAdmin, username, discriminator, globalName, nickname, displayAvatarURL };
 }
 
 app.get(ROUTES.ME, authenticate, async (req, res) => {

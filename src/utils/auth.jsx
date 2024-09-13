@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     // navigate(ROUTES.HOME, { replace: true });
-    setAuth({ isAuth: false })
+    setAuth({ isAuth: false,isAdmin:false })
     Cookie.remove('token');
 
   }
