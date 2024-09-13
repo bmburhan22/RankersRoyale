@@ -36,26 +36,29 @@ class ErrorCode extends Error {
     }
 }
 
-
 const CASINO_OPS = {
-    '500casino': class _500casino{
-        static currencyRate= async()=> await axios.get('https://500.casino/api/boot').then(({data})=>data.siteSettings.currencyRates.bux.usd);
-        
-        static getLeaderboard= async () => {
+    '500casino': await (new class _500casino {
+        init = async () => await axios.get('https://500.casino/api/boot', { headers: { 'x-500-auth': API_KEY_500 } }).then(({ data: { userData: { referralCode }, siteSettings } }) => {
+            const { rate, inverseRate } = siteSettings.currencyRates.bux.usd;
+            const referralLink = "https://500.casino/r/" + referralCode
+            this.initData = { rate, inverseRate, referralCode, referralLink }
+            return this;
+        });
+        getLeaderboard = async () => {
             const r = await axios.post("https://500.casino/api/rewards/affiliate-users",
                 { sorting: { totalPlayed: -1 } }, { headers: { 'x-500-auth': API_KEY_500 } }
             );
-            const {rate}=await this.currencyRate();
-            return r.data.results.map(u => ({ casino_user_id: u._id, total_wager: rate*u.totalPlayed }));
+            return r.data.results.map(u => ({ casino_user_id: u._id, total_wager: this.initData.rate * u.totalPlayed }));
         };
-        static sendBalance= async (destinationUserId, value, balanceType) => {
-            console.log({ value, converted:value*(await this.currencyRate()).inverseRate});
-            
+        sendBalance = async (destinationUserId, value, balanceType) => {
+            console.log({ value, converted: value * this.initData.inverseRate });
+
             return await axios.post('https://tradingapi.500.casino/api/v1/user/balance/send',
-            { destinationUserId, value:value*(await this.currencyRate()).inverseRate , balanceType }, { headers: { 'x-500-auth': API_KEY_500 }, })
-            .catch(err => ({...err.response,success:false}))
-            ;}
-    }
+                { destinationUserId, value: value * this.initData.inverseRate, balanceType }, { headers: { 'x-500-auth': API_KEY_500 }, })
+                .catch(err => ({ ...err.response, success: false }))
+                ;
+        }
+    }().init())
 }
 
 
@@ -99,10 +102,11 @@ app.get(REDIRECT, async ({ query: { code } }, res) => {
 });
 
 const getCasinoUsers = async (casinoIds = Object.keys(CASINO_OPS)) => {
-    let casinoData = { total: {}, 'casinos': {} };
+    let casinoData = {  'casinos': {},total:{} };
     const userIds = (await bot.fetchVerifiedMembers()).map(m => m.id); // discord verified userIds 
 
     for await (let casinoId of casinoIds) {
+        casinoData['casinos'][casinoId] = CASINO_OPS[casinoId].initData;
         let casinoUsers = await CASINO_OPS[casinoId].getLeaderboard(); // add discord verification
         for await (let c of casinoUsers) {
             c.casino_user = await users_casinos.findOne({
@@ -112,26 +116,28 @@ const getCasinoUsers = async (casinoIds = Object.keys(CASINO_OPS)) => {
                 }
             });
 
-            c.wager = c.total_wager - (c.casino_user?.curr_wager_checkpoint ?? c.total_wager);
+            c.wager = Math.max(0, c.total_wager - (c.casino_user?.curr_wager_checkpoint ?? c.total_wager));
             c.wagerPerPoint = await getSettingsNum('wagerPerPoint');
+            c.points = c.wager / c.wagerPerPoint;
             c.user_id = c.casino_user?.user_id;
             c.user = await getUserById(c.casino_user?.user_id ?? null);
-            console.log({total_points:c.user.total_points});
-            
+
             if (casinoData.total[c.user_id]) {
                 casinoData.total[c.user_id].wager += c.wager;
+                casinoData.total[c.user_id].points += c.points;
                 casinoData.total[c.user_id].total_wager += c.total_wager;
             }
-            else casinoData.total[c.user_id]={...c}}
-        
-        casinoData['casinos'][casinoId] = casinoUsers.filter(cu => cu.casino_user != null && cu.user != null).toSorted((a, b) => b.wager - a.wager)
+            else casinoData.total[c.user_id] = { ...c }
+        }
+        casinoData['casinos'][casinoId].leaderboard = casinoUsers.filter(cu => cu.casino_user != null && cu.user != null).toSorted((a, b) => b.wager - a.wager)
     }
     return casinoData;
 }
 app.get(ROUTES.CASINOS, async (req, res) => {
     try {
         const casinoUsers = await getCasinoUsers();
-        return res.json({ casinoUsers });
+        console.log(casinoUsers);
+        return res.json(casinoUsers );
     } catch (err) {
         return res.json({ err: err.toString() });
     }
@@ -165,25 +171,25 @@ app.post(ROUTES.CASINOS, authenticate, async ({ body: { casino_id, casino_user_i
 
 app.post(ROUTES.REDEEM, authenticate, async ({ body: { casinoId, amount, balanceType } }, res) => {
     try {
-        amount = Math.floor(amount*100)/100;
-        console.log({amount});
-        
+        amount = Math.floor(amount * 100) / 100;
+        console.log({ amount });
+
         const user = await getUserById(res.locals.member.id);
         if (amount > 100) throw new ErrorCode(400, 'Redeem amount must not be more than 100');
         if (amount < 0.01) throw new ErrorCode(400, 'Redeem amount must be atleast 0.01');
         if (user.total_points <= amount) throw new ErrorCode(400, 'Insufficient points');
         const { casino_user_id } = await users_casinos.findOne({ where: { user_id: user.id, casino_id: casinoId } });
-        console.log({ casino_user_id, points: user.total_points });
+        console.log({ casino_user_id, total_points: user.total_points });
         const r = await CASINO_OPS[casinoId].sendBalance(casino_user_id, amount, balanceType);
-        console.log({success:r.data});
+        console.log({ success: r.data });
         if (r.data.success) {
-            
+
             user.total_points -= amount;
             await user.save();
         }
         return res.json(r.data);
     } catch (err) {
-        return res.json({code:err.code, err: err.toString() });
+        return res.status(err.code).json({ code: err.code, err: err.toString() });
     }
 });
 
@@ -213,12 +219,15 @@ app.get('/api/setwager', authenticate, async ({ query: { casino_id, curr, prev }
 app.get(ROUTES.RESET_LEADERBOARD, async (req, res) => {
     try {
         const casinoData = await getCasinoUsers();
+        
         for await (let casinoUsers of Object.values(casinoData.casinos)) {
-            for await (let { total_wager, casino_user: cu, user } of casinoUsers) {
+            for await (let { total_wager, wager, wagerPerPoint, points, casino_user: cu, user } of casinoUsers.leaderboard) {
                 cu.prev_wager_checkpoint = cu.curr_wager_checkpoint ?? cu.prev_wager_checkpoint;
                 cu.curr_wager_checkpoint = total_wager;
                 await cu.save();
-                await user.increment({ total_points: Math.max(0, cu.curr_wager_checkpoint - (cu.prev_wager_checkpoint ?? cu.curr_wager_checkpoint)) });
+                console.log({ total_points: user.total_points, wager, wagerPerPoint, points });
+
+                await user.increment({ total_points: points });
             }
         }
         return res.json({ message: 'Wages reset' });
