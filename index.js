@@ -38,15 +38,23 @@ class ErrorCode extends Error {
 
 
 const CASINO_OPS = {
-    '500casino': {
-        getLeaderboard: async () => {
+    '500casino': class _500casino{
+        static currencyRate= async()=> await axios.get('https://500.casino/api/boot').then(({data})=>data.siteSettings.currencyRates.bux.usd);
+        
+        static getLeaderboard= async () => {
             const r = await axios.post("https://500.casino/api/rewards/affiliate-users",
                 { sorting: { totalPlayed: -1 } }, { headers: { 'x-500-auth': API_KEY_500 } }
             );
-            return r.data.results.map(u => ({ casino_user_id: u._id, total_wager: u.totalPlayed }));
-        },
-        sendBalance: async (destinationUserId, value, balanceType) => await axios.post('https://tradingapi.500.casino/api/v1/user/balance/send',
-            { destinationUserId, value, balanceType }, { headers: { 'x-500-auth': API_KEY_500 }, }).catch(err => err.response)
+            const {rate}=await this.currencyRate();
+            return r.data.results.map(u => ({ casino_user_id: u._id, total_wager: rate*u.totalPlayed }));
+        };
+        static sendBalance= async (destinationUserId, value, balanceType) => {
+            console.log({ value, converted:value*(await this.currencyRate()).inverseRate});
+            
+            return await axios.post('https://tradingapi.500.casino/api/v1/user/balance/send',
+            { destinationUserId, value:value*(await this.currencyRate()).inverseRate , balanceType }, { headers: { 'x-500-auth': API_KEY_500 }, })
+            .catch(err => ({...err.response,success:false}))
+            ;}
     }
 }
 
@@ -108,6 +116,8 @@ const getCasinoUsers = async (casinoIds = Object.keys(CASINO_OPS)) => {
             c.wagerPerPoint = await getSettingsNum('wagerPerPoint');
             c.user_id = c.casino_user?.user_id;
             c.user = await getUserById(c.casino_user?.user_id ?? null);
+            console.log({total_points:c.user.total_points});
+            
             if (casinoData.total[c.user_id]) {
                 casinoData.total[c.user_id].wager += c.wager;
                 casinoData.total[c.user_id].total_wager += c.total_wager;
@@ -155,20 +165,25 @@ app.post(ROUTES.CASINOS, authenticate, async ({ body: { casino_id, casino_user_i
 
 app.post(ROUTES.REDEEM, authenticate, async ({ body: { casinoId, amount, balanceType } }, res) => {
     try {
+        amount = Math.floor(amount*100)/100;
+        console.log({amount});
+        
         const user = await getUserById(res.locals.member.id);
         if (amount > 100) throw new ErrorCode(400, 'Redeem amount must not be more than 100');
-        if (amount < 1) throw new ErrorCode(400, 'Redeem amount must be atleast 1');
+        if (amount < 0.01) throw new ErrorCode(400, 'Redeem amount must be atleast 0.01');
         if (user.total_points <= amount) throw new ErrorCode(400, 'Insufficient points');
         const { casino_user_id } = await users_casinos.findOne({ where: { user_id: user.id, casino_id: casinoId } });
-        console.log({ casino_user_id, points: user.points });
+        console.log({ casino_user_id, points: user.total_points });
         const r = await CASINO_OPS[casinoId].sendBalance(casino_user_id, amount, balanceType);
+        console.log({success:r.data});
         if (r.data.success) {
+            
             user.total_points -= amount;
             await user.save();
         }
         return res.json(r.data);
     } catch (err) {
-        return res.status(err.code).json({ err: err.toString() });
+        return res.json({code:err.code, err: err.toString() });
     }
 });
 
