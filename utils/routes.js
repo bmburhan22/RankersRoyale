@@ -12,4 +12,7 @@ export default {
     RESET_LEADERBOARD: '/api/reset-leaderboard',
     REDEEM: '/api/redeem',
     _500CASINO: '/api/casinos/500casino',
+
+    SETTINGS:'/api/admin/settings',
+    CONFIG_CASINO_USER:'/api/admin/config-casino-user',
 }

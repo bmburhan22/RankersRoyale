@@ -1,19 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Navbar from '../components/Navbar';
-import { Box, CssBaseline } from '@mui/material';
+import { Box, CssBaseline, TextField } from '@mui/material';
 import { Link, useLocation } from 'react-router-dom';
 import ROUTES from '../../utils/routes';
 import { useAuth } from '../utils/auth';
-const AdminHome=() => {
-  const {pathname} = useLocation();
-  const {isAdmin} = useAuth();
+import { Button } from 'react-bootstrap';
+const AdminHome = () => {
+  const { isAdmin ,get,post} = useAuth();
+  const [wagerPerPoint, setWagerPerPoint] = useState('1');
+  const setSettings=async(settingsObj)=>{
+    return await post(ROUTES.SETTINGS, settingsObj); }
   return (
-    <Box sx={{ display: 'flex', height: '100vh', backgroundColor:isAdmin==null?'':isAdmin?'#00ff00':'#ff0000' }}>
-      <CssBaseline />
-      <Link style={{height:80}} to={ROUTES.CASINOS_PAGE}>
-      {pathname}
-      </Link>
-    </Box>
+    <> <CssBaseline />
+      <TextField type='number' value={wagerPerPoint} onChange={({ target: { value } }) => setWagerPerPoint(value)} label='Wager Per Point' />
+<Button onClick={()=>setSettings({wagerPerPoint})}/>
+    </>
   );
 };
 

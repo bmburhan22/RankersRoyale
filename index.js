@@ -8,11 +8,10 @@ import cors from 'cors';
 import path from 'path';
 import ROUTES from './utils/routes.js';
 import bot from './utils/discordBot.js';
-import { casinos, getCasinosByUserIds, getSettings, getSettingsNum, getUserById, users, users_casinos } from './utils/db.js';
+import { casinos, getCasinosByUserIds, getSettings, getSettingsNum, getUserById, setSettings, users, users_casinos } from './utils/db.js';
 import { Op } from 'sequelize';
 dotenv.config();
 const { PORT, JWT_SECRET, API_KEY_500,DISCORD_ADMIN_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET } = process.env;
-
 
 const DISCORD_API = 'https://discord.com/api';
 const CLIENT_ROUTES = [
@@ -61,7 +60,6 @@ const CASINO_OPS = {
         }
     }().init())
 }
-
 
 const authenticate = async (req, res, next) => {
     try {
@@ -172,6 +170,8 @@ app.post(ROUTES.CASINOS, authenticate, async ({ body: { casino_id, casino_user_i
 
 app.post(ROUTES.REDEEM, authenticate, async ({ body: { casinoId, amount, balanceType } }, res) => {
     try {
+        if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
+
         amount = Math.floor(amount * 100) / 100;
         console.log({ amount });
 
@@ -217,8 +217,9 @@ app.get('/api/setwager', authenticate, async ({ query: { casino_id, curr, prev }
     }
 });
 
-app.get(ROUTES.RESET_LEADERBOARD, async (req, res) => {
+app.get(ROUTES.RESET_LEADERBOARD,authenticate, async (req, res) => {
     try {
+        if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
         const casinoData = await getCasinoUsers();
         
         for await (let casinoUsers of Object.values(casinoData.casinos)) {
@@ -233,62 +234,30 @@ app.get(ROUTES.RESET_LEADERBOARD, async (req, res) => {
         }
         return res.json({ message: 'Wages reset' });
     } catch (err) {
-        return res.json({ err: err.toString() });
+        return res.status(err.code).json({ err: err.toString() });
+    }
+});
+app.post(ROUTES.SETTINGS,authenticate, async (req, res) => {
+    try {
+        if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
+        await setSettings(req.body);
+        return res.json({ message: 'Settings changed', ...req.body});
+    } catch (err) {
+        return res.status(err.code).json({ err: err.toString() });
     }
 });
 
+app.post(ROUTES.CONFIG_CASINO_USER,authenticate, async (req, res) => {
+    try {
+        if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
+        return res.json({ message: 'Configured Casino Users', ...req.body});
+    } catch (err) {
+        return res.status(err.code).json({ err: err.toString() });
+    }
+});
 app.get(ROUTES.LOGIN, async (req, res) => res.redirect(DISCORD_OAUTH2_URL));
 app.get(CLIENT_ROUTES, (req, res) => res.sendFile(path.join(frontend_path, 'index.html')));
 app.get('*', (req, res) => res.redirect(ROUTES.HOME));
 
 const { port } = app.listen(PORT).address();
 console.info(`\n\nRunning on\nhttp://localhost:${port}`);
-
-
-
-
-// const getUsersCasinoVerified = async (casino_id, casino_user_ids) => {
-//     try {
-//         const userIds = (await bot.fetchVerifiedMembers()).map(m => m.id);
-//         return await getUsersCasino(
-//             // users_casinos.findAll(
-//             // { where: {
-//             casino_id,
-//             // , user_id: { [Op.in]:
-//             userIds,
-//             casino_user_ids,
-//             //  }, casino_username: { [Op.in]:
-//             //  } } }
-
-//         );
-//     } catch (err) {
-//         console.log({ err: err.toString() });
-
-//         return [];
-//     }
-// }
-
-// const fetchLeaderboard500Casinos = async () => await axios.post(_500_API_URL,
-//     { sorting: { totalPlayed: -1 } }, { headers: { 'x-500-auth': API_KEY_500 } }
-// );
-
-// app.get(ROUTES._500CASINOS, async (req, res) => {
-//     try {
-//         const r = await fetchLeaderboard500Casinos();
-
-//         let { results } = r.data;
-//         const casino_user_ids = results.map(r => r._id);
-//         const filtered = await getUsersCasinoVerified('500casino', casino_user_ids);
-
-//         results = results.map(r => {
-//             const { user_id, curr_wager_checkpoint, prev_wager_checkpoint } = filtered.find(f => f.casino_user_id == r._id);
-//             return {
-//                 waged: r.totalPlayed - (curr_wager_checkpoint ?? r.totalPlayed),
-//                 ...r, user_id, prev_wager_checkpoint, curr_wager_checkpoint,
-//             };
-//         }).toSorted((a, b) => b.waged - a.waged);
-//         return res.json({ results });
-//     } catch (err) {
-//         return res.json({ err: err.toString() });
-//     }
-// });
