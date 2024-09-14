@@ -23,7 +23,7 @@ export const casinos = sq.define('casinos',
     , { freezeTableName: true, timestamps: false });
 export const users_casinos = sq.define('users_casinos',
     {
-        user_id: { primaryKey: true, type: STRING }, casino_id: { type: STRING, primaryKey: true }, casino_user_id: { type: STRING },
+        user_id: { primaryKey: true, type: STRING , allowNull:false}, casino_id: { type: STRING, primaryKey: true,allowNull:false }, casino_user_id: { type: STRING },
         prev_wager_checkpoint: { type: DECIMAL(1000, 2) }, curr_wager_checkpoint: { type: DECIMAL(1000, 2) }
     }
     , { freezeTableName: true, timestamps: false });

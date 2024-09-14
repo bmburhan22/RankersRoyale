@@ -196,9 +196,21 @@ app.post(ROUTES.REDEEM, authenticate, async ({ body: { casinoId, amount, balance
 
 app.get(ROUTES.MEMBERS, async (req, res) => {
     try {
-        const userIds = (await bot.fetchVerifiedMembers()).map(m => m.id);
-        const casino_user_ids = await getCasinosByUserIds(userIds); //get
-        return res.json({ casino_user_ids });
+        // const userIds = (await bot.fetchVerifiedMembers()).map(m => m.id);
+        // const casino_user_ids = await getCasinosByUserIds(userIds); //get
+        const usersData = await users.findAll();
+        const casinoUsers = await users_casinos.findAll();
+        return res.json(casinoUsers.map(cu=>({ ...cu.dataValues, ...usersData.find(u=>u.id==cu.user_id )?.dataValues })));
+    } catch (err) {
+        return res.json({ err: err.toString() });
+    }
+});
+app.post(ROUTES.MEMBERS, async ({body:{user_id, total_points, casino_id, casino_user_id}}, res) => {
+    try {
+        const [casinoUser] = await users_casinos.upsert( {user_id, casino_user_id, casino_id}, {updateOnDuplicate:['user_id','casino_id']});
+        const [usersData] = await users.upsert( {id:user_id,total_points}, {updateOnDuplicate:['id']});
+        return res.json({...casinoUser.dataValues, ...usersData.dataValues});
+
     } catch (err) {
         return res.json({ err: err.toString() });
     }
@@ -240,21 +252,22 @@ app.get(ROUTES.RESET_LEADERBOARD,authenticate, async (req, res) => {
 app.post(ROUTES.SETTINGS,authenticate, async (req, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
-        await setSettings(req.body);
-        return res.json({ message: 'Settings changed', ...req.body});
+        const validSettings =Object.fromEntries(Object.entries(req.body).filter(o=>['wagerPerPoint', 'redeem'].includes(o[0])));
+        await setSettings(validSettings);
+        return res.json({ message: 'Settings changed', ...validSettings});
     } catch (err) {
         return res.status(err.code).json({ err: err.toString() });
     }
 });
 
-app.post(ROUTES.CONFIG_CASINO_USER,authenticate, async (req, res) => {
-    try {
-        if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
-        return res.json({ message: 'Configured Casino Users', ...req.body});
-    } catch (err) {
-        return res.status(err.code).json({ err: err.toString() });
-    }
-});
+// app.post(ROUTES.CONFIG_CASINO_USER,authenticate, async (req, res) => {
+//     try {
+//         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
+//         return res.json({ message: 'Configured Casino Users', ...req.body});
+//     } catch (err) {
+//         return res.status(err.code).json({ err: err.toString() });
+//     }
+// });
 app.get(ROUTES.LOGIN, async (req, res) => res.redirect(DISCORD_OAUTH2_URL));
 app.get(CLIENT_ROUTES, (req, res) => res.sendFile(path.join(frontend_path, 'index.html')));
 app.get('*', (req, res) => res.redirect(ROUTES.HOME));
