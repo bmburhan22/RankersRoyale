@@ -20,6 +20,8 @@ const Casinos = () => {
   const [amount, setAmount] = useState(0);
   const [balanceType, setBalanceType] = useState('usdt');
   const [casinoId, setCasinoId] = useState('500casino');
+  const [items, setItems] = useState([]);
+  const getShopItems=async()=>await get(ROUTES.SHOP).then(r=>setItems(r.data.items));
   const getLeadboard = async () => {
     const res = await get(ROUTES.CASINOS);
     if (res.status != 200) { setLeaderboard({ total: {}, casinos: {} }); return; }
@@ -50,6 +52,7 @@ const Casinos = () => {
     getCasinoUserId();
     getCasinoMembers();
     getLeadboard();
+    getShopItems();
   }, []);
   return (
     <>

@@ -8,7 +8,7 @@ import cors from 'cors';
 import path from 'path';
 import ROUTES from './utils/routes.js';
 import bot from './utils/discordBot.js';
-import { casinos, getCasinosByUserIds, getSettings, getSettingsNum, getUserById, setSettings, users, users_casinos } from './utils/db.js';
+import { casinos, deleteShopItem, getCasinosByUserIds, getSettings, getSettingsNum, getShopItems, getUserById, setSettings, setShopItem, users, users_casinos } from './utils/db.js';
 import { Op } from 'sequelize';
 dotenv.config();
 const { PORT, JWT_SECRET, API_KEY_500,DISCORD_ADMIN_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET } = process.env;
@@ -269,14 +269,37 @@ app.get(ROUTES.SETTINGS,authenticate, async (req, res) => {
     }
 });
 
-// app.post(ROUTES.CONFIG_CASINO_USER,authenticate, async (req, res) => {
-//     try {
-//         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
-//         return res.json({ message: 'Configured Casino Users', ...req.body});
-//     } catch (err) {
-//         return res.status(err.code).json({ err: err.toString() });
-//     }
-// });
+app.post(ROUTES.SHOP,authenticate, async (req, res) => {
+    try {
+        if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
+const [item]= await setShopItem(req.body);
+        return res.json({ message: 'Added shop items', item});
+
+    } catch (err) {
+        return res.json({ err: err.toString() });
+    }
+});
+app.delete(ROUTES.SHOP,authenticate, async (req, res) => {
+    try {
+        if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
+        console.log(req.body);
+        
+const item= await deleteShopItem(req.body.item_id);
+        return res.json({ message: 'Deleted shop item', item});
+
+    } catch (err) {
+        return res.json({ err: err.toString() });
+    }
+});
+app.get(ROUTES.SHOP,authenticate, async (req, res) => {
+    try {
+const items= await getShopItems();
+        return res.json({ message: 'fetched shop items', items});
+
+    } catch (err) {
+        return res.json({ err: err.toString() });
+    }
+});
 app.get(ROUTES.LOGIN, async (req, res) => res.redirect(DISCORD_OAUTH2_URL));
 app.get(CLIENT_ROUTES, (req, res) => res.sendFile(path.join(frontend_path, 'index.html')));
 app.get('*', (req, res) => res.redirect(ROUTES.HOME));

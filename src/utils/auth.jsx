@@ -21,6 +21,15 @@ export const AuthProvider = ({ children }) => {
     if (res.status != 200) await validateAuth();
     return res; 
   }
+  const del = async (path, data) => {
+    console.log({delete:true,data});
+    
+    const res = await axios.delete(API_URL + path,  {data} );
+    // console.log({ method: 'post', status: res.status, statusText: res.statusText ,data});
+
+    if (res.status != 200) await validateAuth();
+    return res; 
+  }
   const [auth, setAuth] = useState(null);
   const navigate = useNavigate();
 
@@ -54,7 +63,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ get, post, validateAuth, logout, ...auth }}>
+    <AuthContext.Provider value={{ get, post, del,validateAuth, logout, ...auth }}>
       {children}
     </AuthContext.Provider>
   );

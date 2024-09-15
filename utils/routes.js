@@ -14,5 +14,5 @@ export default {
     _500CASINO: '/api/casinos/500casino',
 
     SETTINGS:'/api/admin/settings',
-    CONFIG_CASINO_USER:'/api/admin/config-casino-user',
+    SHOP:'/api/admin/shop',
 }

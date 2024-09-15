@@ -9,7 +9,7 @@ const settings = sq.define('settings',
     , { freezeTableName: true, timestamps: false }
 );
 const shop_items = sq.define('shop_items',
-    { item_id: { primaryKey: true, type: INTEGER }, price: { type: DECIMAL(1000, 2) }, contents: { type: STRING }, desc: { type: STRING }, }
+    { item_id: { primaryKey: true, type: INTEGER, unique:true }, price: { type: DECIMAL(1000, 2) }, content: { type: STRING }, desc: { type: STRING }, }
     , { freezeTableName: true, timestamps: false }
 );
 export const users = sq.define('users',
@@ -36,6 +36,7 @@ export const getSettings = async () => await settings.findAll().then(settingsLis
 }
     ,{}
 ));
+
 export const getSettingsNum = async (key) => await getSettings().then(s=>parseFloat(s[key]));
 export const setSettings = async (settingsObj) => {
 
@@ -43,6 +44,15 @@ export const setSettings = async (settingsObj) => {
         Object.entries(settingsObj).map(([key, value]) =>( { key, value })),
         { updateOnDuplicate: ['value'] }
     );
+}
+export const setShopItem = async (item) => {
+    return await shop_items.upsert(item,);
+}
+export const deleteShopItem = async (item_id) => {
+    return await shop_items.destroy({where: {item_id}});
+}
+export const getShopItems = async () => {
+    return await shop_items.findAll({}  );
 }
 // export const getUsersCasino = async (casino_id,userIds,casinoUserIds)=>await users_casinos.findAll({where:{
 //         casino_id,user_id:{[Op.in]:userIds} ,casino_user_id:{[Op.in]:casinoUserIds}, 
