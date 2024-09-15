@@ -6,6 +6,7 @@ import ROUTES from '../../utils/routes';
 import { CssBaseline, Box, TextField, Button, Divider, Select, MenuItem, InputLabel } from '@mui/material';
 
 import { Row, Col, Container, FormControl } from 'react-bootstrap';
+import { DataGrid } from '@mui/x-data-grid';
 
 const Casinos = () => {
   const CASINO_OBJ = { bet1: null, '500casino': null };
@@ -15,15 +16,14 @@ const Casinos = () => {
   const [inputData, setInputData] = useState(CASINO_OBJ);
   const [casinoData, setCasinoData] = useState(CASINO_OBJ);
   const [members, setMembers] = useState([]);
-  const [lead500Casino, setLead500Casino] = useState([]);
+  const [leaderBoard, setLeaderboard] = useState({ total: {}, casinos: {} });
   const [amount, setAmount] = useState(0);
   const [balanceType, setBalanceType] = useState('usdt');
   const [casinoId, setCasinoId] = useState('500casino');
-  const getLead500Casino = async () => {
-    const res = await get(ROUTES._500CASINOS);
-    if (res.status != 200) { setLead500Casino([]); return; }
-    setLead500Casino(res.data.results);
-
+  const getLeadboard = async () => {
+    const res = await get(ROUTES.CASINOS);
+    if (res.status != 200) { setLeaderboard({ total: {}, casinos: {} }); return; }
+    setLeaderboard(res.data);
   }
   const getCasinoMembers = async () => {
     const res = await get(ROUTES.MEMBERS);
@@ -44,47 +44,85 @@ const Casinos = () => {
       }, {}))
   }
 
-  const sendBalance = async()=>await post(ROUTES.REDEEM, {amount,balanceType,casinoId}) .catch(alert);
+  const sendBalance = async () => await post(ROUTES.REDEEM, { amount, balanceType, casinoId }).catch(alert);
 
   useEffect(() => {
     getCasinoUserId();
     getCasinoMembers();
-    getLead500Casino();
+    getLeadboard();
   }, []);
   return (
-    // <Box sx={{ display: 'flex', height: '100vh' }}>
-    <><CssBaseline />
+    <>
+
+      <CssBaseline />
       <Navbar />
-      <h1>CASINOS
-        {pathname}
-      </h1>
-      <Container>
+      <div style={{marginTop:100}}>
+        <h3>TOTAL LEADERBOARD</h3>
+        <DataGrid getRowId={({ user_id }) => user_id}
+          columns={[
+            { field: 'user_id' },
+            { field: 'username' },
+            { field: 'wager' },
+            { field: 'total_wager' },
+            { field: 'wagePerPoint' },
+            { field: 'points' },
+            { field: 'total_points' },
+          ]}
+          rows={Object.values(leaderBoard.total).map(rec => ({ ...rec, ...rec.user }))}
+        />
+        {
+
+          Object.entries(leaderBoard.casinos).map(
+            ([casino_id, casinoData]) =>
+              <>
+                <h4>LEADERBOARD for {casinoId}</h4>
+                <br />
+                referralCode: {casinoData.referralCode}
+                <br />
+                referralLink: {casinoData.referralLink}
+                <br />
+                rate: {casinoData.rate}
+                <br />
+                inverseRate: {casinoData.inverseRate}
+                <br />
+
+                <DataGrid getRowId={({ user_id, casino_id }) => user_id + '-' + casino_id}
+                  columns={[
+                    { field: 'user_id' },
+                    { field: 'username' },
+                    { field: 'casino_user_id' },
+                    { field: 'casino_id' },
+                    { field: 'wager' },
+                    { field: 'total_wager' },
+                    { field: 'wagerPerPoint' },
+                    { field: 'prev_wager_checkpoint' },
+                    { field: 'curr_wager_checkpoint' },
+                    { field: 'points' },
+                    { field: 'total_points' },
+
+                  ]}
+                  rows={casinoData.leaderboard
+                    .map(rec => ({ ...rec, ...rec.user, ...rec.casino_user }))
+                  }
+                />
+
+              </>
+          )
+        }
 
         <Row>
           <Col>
-            <h5>
 
-              {JSON.stringify(lead500Casino)}
 
-            </h5>
-            <Divider />
-            <br /><br />
-            <h6>
-
-              {JSON.stringify(members)}
-
-            </h6>
-
-            
-              <TextField label='Amount' type='number' variant='outlined' value={amount} onChange={({target:{value}})=>setAmount(value)} ></TextField>
-              <Select label='Currency' variant='outlined' value={balanceType} onChange={({target:{value}})=>setBalanceType(value)} >
-                <MenuItem value='usdt'>USDT</MenuItem>
-                <MenuItem value='eth'>ETH</MenuItem>
-              </Select>
-              <Select label='Destination wallet' variant='outlined' value={casinoId} onChange={({target:{value}})=>setCasinoId(value)} >
-                <MenuItem value='500casino'>500casino</MenuItem>
-                <MenuItem value='500casino'>CSGO500</MenuItem>
-              </Select>
+            <TextField label='Amount' type='number' variant='outlined' value={amount} onChange={({ target: { value } }) => setAmount(value)} ></TextField>
+            <Select label='Currency' variant='outlined' value={balanceType} onChange={({ target: { value } }) => setBalanceType(value)} >
+              <MenuItem value='usdt'>USDT</MenuItem>
+              <MenuItem value='eth'>ETH</MenuItem>
+            </Select>
+            <Select label='Destination wallet' variant='outlined' value={casinoId} onChange={({ target: { value } }) => setCasinoId(value)} >
+              <MenuItem value='500casino'>500casino</MenuItem>
+              <MenuItem value='500casino'>CSGO500</MenuItem>
+            </Select>
             <Button variant='contained' onClick={sendBalance}>Send</Button>
             <h3>{casinoData?.['500casino']}</h3>
             <TextField label='500casino username' variant='outlined'
@@ -101,12 +139,7 @@ const Casinos = () => {
             <Button variant='contained' onClick={() => setCasinoUserId({ casino_id: 'bet1', casino_user_id: inputData.bet1 })}>Submit</Button>
           </Col>
         </Row>
-        <Col>
-          {
-            <h3></h3>}
-        </Col>
-      </Container>
-      {/* </Box> */}
+      </div>
     </>
   );
 };

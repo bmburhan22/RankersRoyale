@@ -29,8 +29,14 @@ export const users_casinos = sq.define('users_casinos',
     , { freezeTableName: true, timestamps: false });
 export const getUserById = async (id) => await users.findOne({ where: { id } });
 export const getCasinosByUserIds = async (userIds) => await users_casinos.findAll({ where: { user_id: { [Op.in]: userIds } } });
-export const getSettings = async (key) => await settings.findOne({ where: { key } }).then(d => d.value);
-export const getSettingsNum = async (key) => await getSettings(key).then(parseFloat);
+export const getSettings = async () => await settings.findAll().then(settingsList=>settingsList.reduce(
+(acc,{key,value})=>{
+    acc[key]=value;
+    return acc;
+}
+    ,{}
+));
+export const getSettingsNum = async (key) => await getSettings().then(s=>parseFloat(s[key]));
 export const setSettings = async (settingsObj) => {
 
     return await settings.bulkCreate(

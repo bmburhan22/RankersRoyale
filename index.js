@@ -205,9 +205,9 @@ app.get(ROUTES.MEMBERS, async (req, res) => {
         return res.json({ err: err.toString() });
     }
 });
-app.post(ROUTES.MEMBERS, async ({body:{user_id, total_points, casino_id, casino_user_id}}, res) => {
+app.post(ROUTES.MEMBERS, async ({body:{user_id, total_points, casino_id, casino_user_id,  curr_wager_checkpoint,prev_wager_checkpoint }}, res) => {
     try {
-        const [casinoUser] = await users_casinos.upsert( {user_id, casino_user_id, casino_id}, {updateOnDuplicate:['user_id','casino_id']});
+        const [casinoUser] = await users_casinos.upsert( {user_id, casino_user_id, casino_id,  curr_wager_checkpoint,prev_wager_checkpoint}, {updateOnDuplicate:['user_id','casino_id']});
         const [usersData] = await users.upsert( {id:user_id,total_points}, {updateOnDuplicate:['id']});
         return res.json({...casinoUser.dataValues, ...usersData.dataValues});
 
@@ -252,11 +252,20 @@ app.get(ROUTES.RESET_LEADERBOARD,authenticate, async (req, res) => {
 app.post(ROUTES.SETTINGS,authenticate, async (req, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
-        const validSettings =Object.fromEntries(Object.entries(req.body).filter(o=>['wagerPerPoint', 'redeem'].includes(o[0])));
+        const validSettings =Object.fromEntries(Object.entries(req.body).filter(o=>['wagerPerPoint', 'redeem',].includes(o[0])));
         await setSettings(validSettings);
         return res.json({ message: 'Settings changed', ...validSettings});
     } catch (err) {
         return res.status(err.code).json({ err: err.toString() });
+    }
+});
+app.get(ROUTES.SETTINGS,authenticate, async (req, res) => {
+    try {
+        if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
+        const validSettings=await getSettings();
+        return res.json(validSettings);
+    } catch (err) {
+        return res.json({ err: err.toString() });
     }
 });
 
