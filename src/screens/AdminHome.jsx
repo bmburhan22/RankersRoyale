@@ -33,6 +33,7 @@ const AdminHome = () => {
    return await del(ROUTES.SHOP, {item_id});}
 
   const setSettings = async () => { return await post(ROUTES.SETTINGS, settingsObj); }
+  const setCronSettings = async () => { return await post(ROUTES.CRON, settingsObj); }
   useEffect(
     () => { getMembers(); getSettings(); getShopItems(); }
     , []);
@@ -41,13 +42,16 @@ const AdminHome = () => {
     <> <CssBaseline />
       <div style={{marginTop:100}}>
       <TextField type='number' value={settingsObj.wagerPerPoint ?? ''} onChange={({ target: { value: wagerPerPoint } }) => setSettingsObj((obj) => ({ ...obj, wagerPerPoint }))} label='Wager Per Point' />
-      <Select value={settingsObj.redeem || 'auto'} onChange={({ target: { value: redeem } }) => setSettingsObj(obj => ({ ...obj, redeem }))}>
+      <TextField type='number' value={settingsObj.pointsPerDollar ?? ''} onChange={({ target: { value: pointsPerDollar } }) => setSettingsObj((obj) => ({ ...obj, pointsPerDollar }))} label='Points Per Dollar' />
+      <TextField value={settingsObj.cronExpression ?? ''} onChange={({ target: { value: cronExpression } }) => setSettingsObj((obj) => ({ ...obj, cronExpression}))} label='Cron Expression' />
+      <Select value={settingsObj.resetMode || 'auto'} onChange={({ target: { value: resetMode } }) => setSettingsObj(obj => ({ ...obj, resetMode }))}>
         <MenuItem value='auto'>Auto</MenuItem>
         <MenuItem value='manual'>Manual</MenuItem>
         <MenuItem value='disabled'>Disabled</MenuItem>
       </Select>
 
-      <Button onClick={setSettings} />
+      <Button onClick={setSettings} >Settings</Button>
+      <Button onClick={setCronSettings} >Cron Settings</Button>
       <DataGrid processRowUpdate={updateMember} editMode='row' getRowId={({ user_id, casino_id }) => user_id + '-' + casino_id} columns={[
         { field: 'user_id' },
         { field: "casino_id" },

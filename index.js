@@ -10,6 +10,7 @@ import ROUTES from './utils/routes.js';
 import bot from './utils/discordBot.js';
 import { casinos, deleteShopItem, getCasinosByUserIds, getSettings, getSettingsNum, getShopItems, getUserById, setSettings, setShopItem, users, users_casinos } from './utils/db.js';
 import { Op } from 'sequelize';
+import cron from 'node-cron';
 dotenv.config();
 const { PORT, JWT_SECRET, API_KEY_500,DISCORD_ADMIN_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET } = process.env;
 
@@ -60,7 +61,18 @@ const CASINO_OPS = {
         }
     }().init())
 }
-
+let task;
+const scheduleTask = async ()=>{
+    const {resetMode, cronExpression} = await getSettings();    
+    const scheduled = resetMode=='auto';
+    console.log({ valid:cron.validate(cronExpression),resetMode, scheduled, cronExpression});
+    
+    task?.stop();
+    task = (!scheduled||!cron.validate(cronExpression))? null: cron.schedule(cronExpression, resetLeaderboard, {timezone:'ist', scheduled});
+    task?.start();
+    
+    }
+scheduleTask();
 const authenticate = async (req, res, next) => {
     try {
         const token = req.cookies?.['token'];
@@ -178,14 +190,16 @@ app.post(ROUTES.REDEEM, authenticate, async ({ body: { casinoId, amount, balance
         const user = await getUserById(res.locals.member.id);
         if (amount > 100) throw new ErrorCode(400, 'Redeem amount must not be more than 100');
         if (amount < 0.01) throw new ErrorCode(400, 'Redeem amount must be atleast 0.01');
-        if (user.total_points <= amount) throw new ErrorCode(400, 'Insufficient points');
+        const points = amount* await getSettingsNum('pointsPerDollar');
+        if (user.total_points <= points) throw new ErrorCode(400, 'Insufficient points');
         const { casino_user_id } = await users_casinos.findOne({ where: { user_id: user.id, casino_id: casinoId } });
         console.log({ casino_user_id, total_points: user.total_points });
-        const r = await CASINO_OPS[casinoId].sendBalance(casino_user_id, amount, balanceType);
+        // const r = await CASINO_OPS[casinoId].sendBalance(casino_user_id, amount, balanceType);
+        const r= {data:{success:true}};
         console.log({ success: r.data });
         if (r.data.success) {
 
-            user.total_points -= amount;
+            user.total_points -= points;
             await user.save();
         }
         return res.json(r.data);
@@ -229,32 +243,50 @@ app.get('/api/setwager', authenticate, async ({ query: { casino_id, curr, prev }
     }
 });
 
+const resetLeaderboard = async()=>{
+    const cronTimeStamp=Date.now();
+    console.log({cronTimeStamp});
+    
+    setSettings({cronTimeStamp});return;
+    const casinoData = await getCasinoUsers();
+        
+    for await (let casinoUsers of Object.values(casinoData.casinos)) {
+        for await (let { total_wager, wager, wagerPerPoint, points, casino_user: cu, user } of casinoUsers.leaderboard) {
+            cu.prev_wager_checkpoint = cu.curr_wager_checkpoint ?? cu.prev_wager_checkpoint;
+            cu.curr_wager_checkpoint = total_wager;
+            await cu.save();
+            console.log({ total_points: user.total_points, wager, wagerPerPoint, points });
+
+            await user.increment({ total_points: points });
+        }
+    }
+    return ;
+}
+
 app.get(ROUTES.RESET_LEADERBOARD,authenticate, async (req, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
-        const casinoData = await getCasinoUsers();
-        
-        for await (let casinoUsers of Object.values(casinoData.casinos)) {
-            for await (let { total_wager, wager, wagerPerPoint, points, casino_user: cu, user } of casinoUsers.leaderboard) {
-                cu.prev_wager_checkpoint = cu.curr_wager_checkpoint ?? cu.prev_wager_checkpoint;
-                cu.curr_wager_checkpoint = total_wager;
-                await cu.save();
-                console.log({ total_points: user.total_points, wager, wagerPerPoint, points });
-
-                await user.increment({ total_points: points });
-            }
-        }
+await resetLeaderboard();
         return res.json({ message: 'Wages reset' });
     } catch (err) {
         return res.status(err.code).json({ err: err.toString() });
     }
 });
-app.post(ROUTES.SETTINGS,authenticate, async (req, res) => {
+app.post(ROUTES.SETTINGS,authenticate, async ({body:{resetMode, cronExpression, ...settingsObj}}, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
-        const validSettings =Object.fromEntries(Object.entries(req.body).filter(o=>['wagerPerPoint', 'redeem',].includes(o[0])));
-        await setSettings(validSettings);
-        return res.json({ message: 'Settings changed', ...validSettings});
+        const settingsList =await setSettings(settingsObj);
+        return res.json({ message: 'Settings changed', ...settingsList});
+    } catch (err) {
+        return res.status(err.code).json({ err: err.toString() });
+    }
+});
+app.post(ROUTES.CRON,authenticate, async ({body:{cronExpression, resetMode}}, res) => {
+    try {
+        if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
+        const settingsList =await setSettings({cronExpression,resetMode});
+        await scheduleTask();
+        return res.json({ message: 'Settings changed', ...settingsList});
     } catch (err) {
         return res.status(err.code).json({ err: err.toString() });
     }
@@ -262,8 +294,9 @@ app.post(ROUTES.SETTINGS,authenticate, async (req, res) => {
 app.get(ROUTES.SETTINGS,authenticate, async (req, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
-        const validSettings=await getSettings();
-        return res.json(validSettings);
+        return res.json(
+            await getSettings()
+        );
     } catch (err) {
         return res.json({ err: err.toString() });
     }

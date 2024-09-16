@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 const { DB_URL } = process.env;
 const sq = new Sequelize(DB_URL);
-
+const allowedSettings=[ 'wagerPerPoint', 'resetMode','pointsPerDollar', 'cronExpression','cronTimeStamp'];
 const settings = sq.define('settings',
     { key: { primaryKey: true, type: STRING }, value: { type: STRING } }
     , { freezeTableName: true, timestamps: false }
@@ -39,9 +39,10 @@ export const getSettings = async () => await settings.findAll().then(settingsLis
 
 export const getSettingsNum = async (key) => await getSettings().then(s=>parseFloat(s[key]));
 export const setSettings = async (settingsObj) => {
-
     return await settings.bulkCreate(
-        Object.entries(settingsObj).map(([key, value]) =>( { key, value })),
+        Object.entries(settingsObj)
+        .filter(o=>allowedSettings.includes(o[0]))
+        .map(([key, value]) =>( { key, value })),
         { updateOnDuplicate: ['value'] }
     );
 }
@@ -60,7 +61,7 @@ export const getShopItems = async () => {
 
 sq.sync({ alter: true }).then(async () => {
     // static casino data
-    await setSettings({ wagerPerPoint: 5 });
+    await setSettings({ wagerPerPoint: 5, pointsPerDollar:100  });
     await casinos.bulkCreate(
         [
             { id: '500casino', name: '500casino', link: 'https://500.casino' },

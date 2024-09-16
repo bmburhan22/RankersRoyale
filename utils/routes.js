@@ -15,4 +15,5 @@ export default {
 
     SETTINGS:'/api/admin/settings',
     SHOP:'/api/admin/shop',
+    CRON:'/api/admin/cron',
 }
