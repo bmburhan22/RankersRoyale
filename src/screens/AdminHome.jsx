@@ -73,7 +73,8 @@ const AdminHome = () => {
         columns={[
           { field: 'item_id', editable: true },
           { field: 'price', editable: true },
-          { field: 'content', editable: true },
+          { field: 'minAmount', editable: true },
+          { field: 'maxAmount', editable: true },
           { field: 'desc', editable: true },
           {
             field: 'actions',

@@ -6,7 +6,7 @@ import ROUTES from '../../utils/routes';
 import { CssBaseline, Box, TextField, Button, Divider, Select, MenuItem, InputLabel } from '@mui/material';
 
 import { Row, Col, Container, FormControl } from 'react-bootstrap';
-import { DataGrid } from '@mui/x-data-grid';
+import { DataGrid, GridActionsCellItem, GridAddIcon } from '@mui/x-data-grid';
 
 const Casinos = () => {
   const CASINO_OBJ = { bet1: null, '500casino': null };
@@ -20,8 +20,9 @@ const Casinos = () => {
   const [amount, setAmount] = useState(0);
   const [balanceType, setBalanceType] = useState('usdt');
   const [casinoId, setCasinoId] = useState('500casino');
+  const [casinoWallets,setCasinoWallets]=useState([]);
   const [items, setItems] = useState([]);
-  const getShopItems=async()=>await get(ROUTES.SHOP).then(r=>setItems(r.data.items));
+  const getShopItems=async()=>await get(ROUTES.SHOP).then(r=>{setItems(r.data.items); setCasinoWallets(r.data.casinoWallets)});
   const getLeadboard = async () => {
     const res = await get(ROUTES.CASINOS);
     if (res.status != 200) { setLeaderboard({ total: {}, casinos: {} }); return; }
@@ -47,6 +48,7 @@ const Casinos = () => {
   }
 
   const sendBalance = async () => await post(ROUTES.REDEEM, { amount, balanceType, casinoId }).catch(alert);
+  const redeemItem = async ({item_id,minAmount, maxAmount}) => await post(ROUTES.BUY, { item_id, casinoId,balanceType }).catch(alert);
 
   useEffect(() => {
     getCasinoUserId();
@@ -122,9 +124,11 @@ const Casinos = () => {
               <MenuItem value='usdt'>USDT</MenuItem>
               <MenuItem value='eth'>ETH</MenuItem>
             </Select>
-            <Select label='Destination wallet' variant='outlined' value={casinoId} onChange={({ target: { value } }) => setCasinoId(value)} >
-              <MenuItem value='500casino'>500casino</MenuItem>
-              <MenuItem value='500casino'>CSGO500</MenuItem>
+            <Select label='Destination wallet' variant='outlined'  value={casinoId} onChange={({ target: { value } }) => setCasinoId(value)} >
+         {...casinoWallets.map(cw=>
+
+<MenuItem value={cw}>{cw}</MenuItem>
+         )}
             </Select>
             <Button variant='contained' onClick={sendBalance}>Send</Button>
             <h3>{casinoData?.['500casino']}</h3>
@@ -142,6 +146,23 @@ const Casinos = () => {
             <Button variant='contained' onClick={() => setCasinoUserId({ casino_id: 'bet1', casino_user_id: inputData.bet1 })}>Submit</Button>
           </Col>
         </Row>
+
+        <DataGrid  getRowId={({ item_id }) => item_id}
+        rows={items}
+        columns={[
+          { field: 'item_id' },
+          { field: 'price',  },
+          { field: 'minAmount', },
+          { field: 'maxAmount', },
+          { field: 'desc',  },
+          {
+            field: 'actions',
+            type: 'actions',
+            getActions: (params) => [
+              <GridActionsCellItem icon={<GridAddIcon/>} onClick={()=>redeemItem( params.row)} label="Redeem" />]
+            },
+        ]}
+      />
       </div>
     </>
   );

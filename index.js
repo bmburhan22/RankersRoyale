@@ -8,7 +8,7 @@ import cors from 'cors';
 import path from 'path';
 import ROUTES from './utils/routes.js';
 import bot from './utils/discordBot.js';
-import { casinos, deleteShopItem, getCasinosByUserIds, getSettings, getSettingsNum, getShopItems, getUserById, setSettings, setShopItem, users, users_casinos } from './utils/db.js';
+import { casinos, deleteShopItem, getCasinosByUserIds, getSettings, getSettingsNum, getShopItem, getShopItems, getUserById, setSettings, setShopItem, users, users_casinos } from './utils/db.js';
 import { Op } from 'sequelize';
 import cron from 'node-cron';
 dotenv.config();
@@ -179,32 +179,52 @@ app.post(ROUTES.CASINOS, authenticate, async ({ body: { casino_id, casino_user_i
         return res.json({ err: err.toString() });
     }
 });
+const round = val=>Math.floor(parseFloat(val)* 100) / 100;
+const sendBalance=async( { user_id, casinoId, amount,price, balanceType })=>{
+    console.log({ amount, price, rounded:round(amount) });
+    amount = round(amount);
+    price= round(price);
 
-app.post(ROUTES.REDEEM, authenticate, async ({ body: { casinoId, amount, balanceType } }, res) => {
+    const user = await getUserById(user_id);
+    if (amount > 100) throw new ErrorCode(400, 'Redeem amount must not be more than 100');
+    if (amount < 0.01) throw new ErrorCode(400, 'Redeem amount must be atleast 0.01');
+    // const points = amount* await getSettingsNum('pointsPerDollar');
+    if (user.total_points <= price) throw new ErrorCode(400, 'Insufficient points');
+    const { casino_user_id } = await users_casinos.findOne({ where: { user_id, casino_id: casinoId } });
+    console.log({ casino_user_id, total_points: user.total_points });
+    const r = await CASINO_OPS[casinoId].sendBalance(casino_user_id, amount, balanceType);
+    console.log({ success: r.data });
+    if (r.data.success) {
+        user.total_points -= price;
+        await user.save();
+    }
+    return r;
+}
+
+app.post(ROUTES.REDEEM, authenticate, async (req, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
-
-        amount = Math.floor(amount * 100) / 100;
-        console.log({ amount });
-
-        const user = await getUserById(res.locals.member.id);
-        if (amount > 100) throw new ErrorCode(400, 'Redeem amount must not be more than 100');
-        if (amount < 0.01) throw new ErrorCode(400, 'Redeem amount must be atleast 0.01');
-        const points = amount* await getSettingsNum('pointsPerDollar');
-        if (user.total_points <= points) throw new ErrorCode(400, 'Insufficient points');
-        const { casino_user_id } = await users_casinos.findOne({ where: { user_id: user.id, casino_id: casinoId } });
-        console.log({ casino_user_id, total_points: user.total_points });
-        // const r = await CASINO_OPS[casinoId].sendBalance(casino_user_id, amount, balanceType);
-        const r= {data:{success:true}};
-        console.log({ success: r.data });
-        if (r.data.success) {
-
-            user.total_points -= points;
-            await user.save();
-        }
+        const price = parseFloat(req.body.amount)* await getSettingsNum('pointsPerDollar');
+        const r = await sendBalance({price, user_id:res.locals.member.id, ...req.body}); 
         return res.json(r.data);
     } catch (err) {
         return res.status(err.code).json({ code: err.code, err: err.toString() });
+    }
+});
+const random=(min, max) => Math.random() * (max - min) + min;
+
+app.post(ROUTES.BUY, authenticate, async ({body:{item_id, balanceType,casinoId}}, res) => {
+    try {
+        if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
+        const {minAmount, maxAmount, price} = await getShopItem(item_id);
+        if (!(minAmount&&maxAmount&&price)) throw new ErrorCode(403, 'Item not found');
+        const amount = random(minAmount,maxAmount);
+        console.log({item_id, price,amount, minAmount,maxAmount});
+
+        const r = await sendBalance({balanceType,casinoId, amount,price, user_id:res.locals.member.id, }); 
+        return res.json(r.data);
+    } catch (err) {
+        return res.json({ code: err.code, err: err.toString() });
     }
 });
 
@@ -327,7 +347,7 @@ const item= await deleteShopItem(req.body.item_id);
 app.get(ROUTES.SHOP,authenticate, async (req, res) => {
     try {
 const items= await getShopItems();
-        return res.json({ message: 'fetched shop items', items});
+        return res.json({ message: 'fetched shop items', items, casinoWallets:Object.keys(CASINO_OPS).filter(casinoId=>CASINO_OPS[casinoId].sendBalance!=null) });
 
     } catch (err) {
         return res.json({ err: err.toString() });

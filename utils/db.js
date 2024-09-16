@@ -9,7 +9,7 @@ const settings = sq.define('settings',
     , { freezeTableName: true, timestamps: false }
 );
 const shop_items = sq.define('shop_items',
-    { item_id: { primaryKey: true, type: INTEGER, unique:true }, price: { type: DECIMAL(1000, 2) }, content: { type: STRING }, desc: { type: STRING }, }
+    { item_id: { primaryKey: true, type: INTEGER, unique:true }, price: { type: DECIMAL(1000, 2) }, minAmount: { type: DECIMAL(1000,2) },maxAmount: { type: DECIMAL(1000,2) }, desc: { type: STRING }, }
     , { freezeTableName: true, timestamps: false }
 );
 export const users = sq.define('users',
@@ -53,8 +53,11 @@ export const deleteShopItem = async (item_id) => {
     return await shop_items.destroy({where: {item_id}});
 }
 export const getShopItems = async () => {
-    return await shop_items.findAll({}  );
+    return (await shop_items.findAll({raw:true}  )).map(record=>parse(record));
 }
+const parse = ({minAmount,maxAmount,price,...record})=>({...record,minAmount:parseFloat(minAmount), maxAmount:parseFloat(maxAmount), price:parseFloat(price)})
+export const getShopItem = async (item_id) =>  parse(await shop_items.findOne({where:{item_id}}  ));
+
 // export const getUsersCasino = async (casino_id,userIds,casinoUserIds)=>await users_casinos.findAll({where:{
 //         casino_id,user_id:{[Op.in]:userIds} ,casino_user_id:{[Op.in]:casinoUserIds}, 
 // },}); 

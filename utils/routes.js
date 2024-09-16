@@ -11,7 +11,7 @@ export default {
     CASINOS: '/api/casinos',
     RESET_LEADERBOARD: '/api/reset-leaderboard',
     REDEEM: '/api/redeem',
-    _500CASINO: '/api/casinos/500casino',
+    BUY:'/api/buy',
 
     SETTINGS:'/api/admin/settings',
     SHOP:'/api/admin/shop',
