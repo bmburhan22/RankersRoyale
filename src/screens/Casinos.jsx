@@ -15,7 +15,7 @@ const Casinos = () => {
   const { pathname } = useLocation();
   const [inputData, setInputData] = useState(CASINO_OBJ);
   const [casinoData, setCasinoData] = useState(CASINO_OBJ);
-  const [members, setMembers] = useState([]);
+  // const [members, setMembers] = useState([]);
   const [leaderBoard, setLeaderboard] = useState({ total: {}, casinos: {} });
   const [amount, setAmount] = useState(0);
   const [balanceType, setBalanceType] = useState('usdt');
@@ -28,11 +28,11 @@ const Casinos = () => {
     if (res.status != 200) { setLeaderboard({ total: {}, casinos: {} }); return; }
     setLeaderboard(res.data);
   }
-  const getCasinoMembers = async () => {
-    const res = await get(ROUTES.MEMBERS);
-    if (res.status != 200) { setMembers([]); return; }
-    setMembers(res.data.casino_user_ids);
-  }
+  // const getCasinoMembers = async () => {
+  //   const res = await get(ROUTES.MEMBERS);
+  //   if (res.status != 200) { setMembers([]); return; }
+  //   setMembers(res.data.casino_user_ids);
+  // }
 
   const setCasinoUserId = (casinoUserId) => post(ROUTES.CASINOS, casinoUserId);
   const getCasinoUserId = async () => {
@@ -52,7 +52,7 @@ const Casinos = () => {
 
   useEffect(() => {
     getCasinoUserId();
-    getCasinoMembers();
+    // getCasinoMembers();
     getLeadboard();
     getShopItems();
   }, []);
@@ -121,14 +121,10 @@ const Casinos = () => {
 
             <TextField label='Amount' type='number' variant='outlined' value={amount} onChange={({ target: { value } }) => setAmount(value)} ></TextField>
             <Select label='Currency' variant='outlined' value={balanceType} onChange={({ target: { value } }) => setBalanceType(value)} >
-              <MenuItem value='usdt'>USDT</MenuItem>
-              <MenuItem value='eth'>ETH</MenuItem>
+            {leaderBoard?.casinos?.[casinoId]?.currencies?.map(curr=><MenuItem value={curr}>{curr}</MenuItem>)}
             </Select>
             <Select label='Destination wallet' variant='outlined'  value={casinoId} onChange={({ target: { value } }) => setCasinoId(value)} >
-         {...casinoWallets.map(cw=>
-
-<MenuItem value={cw}>{cw}</MenuItem>
-         )}
+         {casinoWallets.map(cw=><MenuItem value={cw}>{cw}</MenuItem>)}
             </Select>
             <Button variant='contained' onClick={sendBalance}>Send</Button>
             <h3>{casinoData?.['500casino']}</h3>

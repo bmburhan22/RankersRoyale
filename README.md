@@ -1,8 +1,9 @@
-# React + Vite
+# Rankers Royale
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+- Complete user web app for ranking users by points earned per season from different fantasy sports websites.
 
-Currently, two official plugins are available:
+- Leaderboard rankers get points. Users redeem points earned through shop or payouts directly to fantasy sports website account wallets.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Login through Discord account (Discord OAuth2)
+
+- Admin page to add shop items, change user's fantasy site usernames and points. Auto redeem manual settings. Reset leaderboard and start new season.
