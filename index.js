@@ -8,11 +8,11 @@ import cors from 'cors';
 import path from 'path';
 import ROUTES from './utils/routes.js';
 import bot from './utils/discordBot.js';
-import { casinos, deleteShopItem, getCasinosByUserIds, getSettings, getSettingsNum, getShopItem, getShopItems, getUserById, setSettings, setShopItem, users, users_casinos } from './utils/db.js';
+import { casinos, deleteCasinoUser, deleteShopItem, getCasinosByUserIds, getSettings, getSettingsNum, getShopItem, getShopItems, getUserById, setSettings, setShopItem, users, users_casinos } from './utils/db.js';
 import { Op } from 'sequelize';
 import cron from 'node-cron';
 dotenv.config();
-const { PORT, JWT_SECRET, API_KEY_500,DISCORD_ADMIN_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET } = process.env;
+const { PORT, JWT_SECRET, API_KEY_500, API_KEY_RAZED, API_KEY_RAZED_REF, DISCORD_ADMIN_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET } = process.env;
 
 const DISCORD_API = 'https://discord.com/api';
 const CLIENT_ROUTES = [
@@ -36,13 +36,13 @@ class ErrorCode extends Error {
         this.name = this.constructor.name;
     }
 }
-
+import fs from 'fs'
 const CASINO_OPS = {
     '500casino': await (new class _500casino {
-        init = async () => await axios.get('https://500.casino/api/boot', { headers: { 'x-500-auth': API_KEY_500 } }).then(({ data: { userData: { referralCode }, siteSettings,balances:{crypto:currencies} } }) => {
+        init = async () => await axios.get('https://500.casino/api/boot', { headers: { 'x-500-auth': API_KEY_500 } }).then(({ data: { userData: { referralCode }, siteSettings, balances: { crypto: currencies } } }) => {
             const { rate, inverseRate } = siteSettings.currencyRates.bux.usd;
             const referralLink = "https://500.casino/r/" + referralCode
-            this.initData = { rate,currencies, inverseRate, referralCode, referralLink }
+            this.initData = { rate, currencies, inverseRate, referralCode, referralLink }
             return this;
         });
         getLeaderboard = async () => {
@@ -59,19 +59,57 @@ const CASINO_OPS = {
                 .catch(err => ({ ...err.response, success: false }))
                 ;
         }
+    }().init()),
+
+
+
+    'razed': await (new class Razed {
+        init = async () => await fetch('https://api.razed.com/player/api/v1/profile',
+            {
+                headers: { Authorization: 'Bearer ' + API_KEY_RAZED }
+            },)
+            .then(async r => r.json())
+            .then(async ({ referral_code: referralCode }) => {
+                // const { rate, inverseRate } = siteSettings.currencyRates.bux.usd;
+                const referralLink = "https://www.razed.com/signup/?raf=" + referralCode
+                this.initData = { rate: 1, currencies: ['usd'], inverseRate: 1, referralCode, referralLink }
+                return this;
+            })
+        // .catch(e=>fs.writeFileSync('t.txt',JSON.stringify(e)));
+        getLeaderboard = async () => {
+            const r = await axios.get("https://api.razed.com/player/api/v1/referrals/leaderboard",
+                {
+                    data: { referral_code: "Razedreloads,Chrisspinsslots,ReloadsJP,Reloads", from: "0001-01-01", to: "9999-12-31", top: 100 },
+                    headers:
+                        { "Content-Type":'application/json', Authorization: API_KEY_RAZED_REF },
+                }
+            ).catch(r => {
+                console.log(r);
+            })
+            return r.data.map(u => ({ casino_user_id: u.username, total_wager: this.initData.rate * u.wagered }));
+        };
+        sendBalance = async (receiver_username, amount, balanceType) => {
+            console.log({ amount });
+
+            return await axios.post('https://api.razed.com/player/api/v1/tips',
+                { receiver_username, amount, otp_code: "", is_public_tip: true },
+                { headers: { Authorization: 'Bearer ' + API_KEY_RAZED } },
+            ).catch(err => ({ ...err.response, success: false }))
+                ;
+        }
     }().init())
 }
 let task;
-const scheduleTask = async ()=>{
-    const {resetMode, cronExpression} = await getSettings();    
-    const scheduled = resetMode=='auto';
-    console.log({ valid:cron.validate(cronExpression),resetMode, scheduled, cronExpression});
-    
+const scheduleTask = async () => {
+    const { resetMode, cronExpression } = await getSettings();
+    const scheduled = resetMode == 'auto';
+    console.log({ valid: cron.validate(cronExpression), resetMode, scheduled, cronExpression });
+
     task?.stop();
-    task = (!scheduled||!cron.validate(cronExpression))? null: cron.schedule(cronExpression, resetLeaderboard, {timezone:'ist', scheduled});
+    task = (!scheduled || !cron.validate(cronExpression)) ? null : cron.schedule(cronExpression, resetLeaderboard, { timezone: 'ist', scheduled });
     task?.start();
-    
-    }
+
+}
 scheduleTask();
 const authenticate = async (req, res, next) => {
     try {
@@ -85,7 +123,7 @@ const authenticate = async (req, res, next) => {
 
         const member = (await bot.fetchVerifiedMembers()).find(m => m.id == user_id)
         if (!member) throw new ErrorCode(403, 'Not a verified server member');
-        member.isAdmin=member.roles.cache.has(DISCORD_ADMIN_ROLE_ID)
+        member.isAdmin = member.roles.cache.has(DISCORD_ADMIN_ROLE_ID)
         res.locals.member = member;
         await next();
 
@@ -113,12 +151,14 @@ app.get(REDIRECT, async ({ query: { code } }, res) => {
 });
 
 const getCasinoUsers = async (casinoIds = Object.keys(CASINO_OPS)) => {
-    let casinoData = {  'casinos': {},total:{} };
+    let casinoData = { 'casinos': {}, total: {} };
     const userIds = (await bot.fetchVerifiedMembers()).map(m => m.id); // discord verified userIds 
 
     for await (let casinoId of casinoIds) {
         casinoData['casinos'][casinoId] = CASINO_OPS[casinoId].initData;
         let casinoUsers = await CASINO_OPS[casinoId].getLeaderboard(); // add discord verification
+        console.log({ casinoUsers });
+
         for await (let c of casinoUsers) {
             c.casino_user = await users_casinos.findOne({
                 where: {
@@ -138,7 +178,7 @@ const getCasinoUsers = async (casinoIds = Object.keys(CASINO_OPS)) => {
                 casinoData.total[c.user_id].points += c.points;
                 casinoData.total[c.user_id].total_wager += c.total_wager;
             }
-            else casinoData.total[c.user_id] = { ...c }
+            else if (c.user_id) casinoData.total[c.user_id] = { ...c }
         }
         casinoData['casinos'][casinoId].leaderboard = casinoUsers.filter(cu => cu.casino_user != null && cu.user != null).toSorted((a, b) => b.wager - a.wager)
     }
@@ -148,7 +188,7 @@ app.get(ROUTES.CASINOS, async (req, res) => {
     try {
         const casinoUsers = await getCasinoUsers();
         console.log(casinoUsers);
-        return res.json(casinoUsers );
+        return res.json(casinoUsers);
     } catch (err) {
         return res.json({ err: err.toString() });
     }
@@ -158,7 +198,7 @@ app.get(ROUTES.CASINOS, async (req, res) => {
 const memberToUser = (member) => {
     const { username, discriminator, globalName } = member.user;
     const { displayAvatarURL, nickname, isAdmin } = member.toJSON();
-    return {isAdmin, username, discriminator, globalName, nickname, displayAvatarURL };
+    return { isAdmin, username, discriminator, globalName, nickname, displayAvatarURL };
 }
 
 app.get(ROUTES.ME, authenticate, async (req, res) => {
@@ -179,11 +219,11 @@ app.post(ROUTES.CASINOS, authenticate, async ({ body: { casino_id, casino_user_i
         return res.json({ err: err.toString() });
     }
 });
-const round = val=>Math.floor(parseFloat(val)* 100) / 100;
-const sendBalance=async( { user_id, casinoId, amount,price, balanceType })=>{
-    console.log({ amount, price, rounded:round(amount) });
+const round = val => Math.floor(parseFloat(val) * 100) / 100;
+const sendBalance = async ({ user_id, casinoId, amount, price, balanceType }) => {
+    console.log({ amount, price, rounded: round(amount) });
     amount = round(amount);
-    price= round(price);
+    price = round(price);
 
     const user = await getUserById(user_id);
     if (amount > 100) throw new ErrorCode(400, 'Redeem amount must not be more than 100');
@@ -204,24 +244,24 @@ const sendBalance=async( { user_id, casinoId, amount,price, balanceType })=>{
 app.post(ROUTES.REDEEM, authenticate, async (req, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
-        const price = parseFloat(req.body.amount)* await getSettingsNum('pointsPerDollar');
-        const r = await sendBalance({price, user_id:res.locals.member.id, ...req.body}); 
+        const price = parseFloat(req.body.amount) * await getSettingsNum('pointsPerDollar');
+        const r = await sendBalance({ price, user_id: res.locals.member.id, ...req.body });
         return res.json(r.data);
     } catch (err) {
         return res.status(err.code).json({ code: err.code, err: err.toString() });
     }
 });
-const random=(min, max) => Math.random() * (max - min) + min;
+const random = (min, max) => Math.random() * (max - min) + min;
 
-app.post(ROUTES.BUY, authenticate, async ({body:{item_id, balanceType,casinoId}}, res) => {
+app.post(ROUTES.BUY, authenticate, async ({ body: { item_id, balanceType, casinoId } }, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
-        const {minAmount, maxAmount, price} = await getShopItem(item_id);
-        if (!(minAmount&&maxAmount&&price)) throw new ErrorCode(403, 'Item not found');
-        const amount = random(minAmount,maxAmount);
-        console.log({item_id, price,amount, minAmount,maxAmount});
+        const { minAmount, maxAmount, price } = await getShopItem(item_id);
+        if (!(minAmount && maxAmount && price)) throw new ErrorCode(403, 'Item not found');
+        const amount = random(minAmount, maxAmount);
+        console.log({ item_id, price, amount, minAmount, maxAmount });
 
-        const r = await sendBalance({balanceType,casinoId, amount,price, user_id:res.locals.member.id, }); 
+        const r = await sendBalance({ balanceType, casinoId, amount, price, user_id: res.locals.member.id, });
         return res.json(r.data);
     } catch (err) {
         return res.json({ code: err.code, err: err.toString() });
@@ -234,22 +274,30 @@ app.get(ROUTES.MEMBERS, async (req, res) => {
         // const casino_user_ids = await getCasinosByUserIds(userIds); //get
         const usersData = await users.findAll();
         const casinoUsers = await users_casinos.findAll();
-        return res.json(casinoUsers.map(cu=>({ ...cu.dataValues, ...usersData.find(u=>u.id==cu.user_id )?.dataValues })));
+        return res.json(casinoUsers.map(cu => ({ ...cu.dataValues, ...usersData.find(u => u.id == cu.user_id)?.dataValues })));
     } catch (err) {
         return res.json({ err: err.toString() });
     }
 });
-app.post(ROUTES.MEMBERS, async ({body:{user_id, total_points, casino_id, casino_user_id,  curr_wager_checkpoint,prev_wager_checkpoint }}, res) => {
+app.post(ROUTES.MEMBERS, async ({ body: { user_id, total_points, casino_id, casino_user_id, curr_wager_checkpoint, prev_wager_checkpoint } }, res) => {
     try {
-        const [casinoUser] = await users_casinos.upsert( {user_id, casino_user_id, casino_id,  curr_wager_checkpoint,prev_wager_checkpoint}, {updateOnDuplicate:['user_id','casino_id']});
-        const [usersData] = await users.upsert( {id:user_id,total_points}, {updateOnDuplicate:['id']});
-        return res.json({...casinoUser.dataValues, ...usersData.dataValues});
+        const [casinoUser] = await users_casinos.upsert({ user_id, casino_user_id, casino_id, curr_wager_checkpoint, prev_wager_checkpoint }, { updateOnDuplicate: ['user_id', 'casino_id'] });
+        const [usersData] = await users.upsert({ id: user_id, total_points }, { updateOnDuplicate: ['id'] });
+        return res.json({ ...casinoUser.dataValues, ...usersData.dataValues });
 
     } catch (err) {
         return res.json({ err: err.toString() });
     }
 });
+app.delete(ROUTES.MEMBERS, async ({ body: { user_id, casino_user_id } }, res) => {
+    try {
+        const r = deleteCasinoUser({ user_id, casino_user_id });
+        return res.json(r);
 
+    } catch (err) {
+        return res.json({ err: err.toString() });
+    }
+});
 app.get('/api/setwager', authenticate, async ({ query: { casino_id, curr, prev } }, res) => {
     try {
 
@@ -263,55 +311,51 @@ app.get('/api/setwager', authenticate, async ({ query: { casino_id, curr, prev }
     }
 });
 
-const resetLeaderboard = async()=>{
-    const cronTimeStamp=Date.now();
-    console.log({cronTimeStamp});
-    
-    setSettings({cronTimeStamp});return;
+const resetLeaderboard = async () => {
     const casinoData = await getCasinoUsers();
-        
     for await (let casinoUsers of Object.values(casinoData.casinos)) {
         for await (let { total_wager, wager, wagerPerPoint, points, casino_user: cu, user } of casinoUsers.leaderboard) {
             cu.prev_wager_checkpoint = cu.curr_wager_checkpoint ?? cu.prev_wager_checkpoint;
             cu.curr_wager_checkpoint = total_wager;
             await cu.save();
             console.log({ total_points: user.total_points, wager, wagerPerPoint, points });
-
             await user.increment({ total_points: points });
         }
     }
-    return ;
+    const cronTimeStamp = Date.now();
+    console.log({ cronTimeStamp });
+    setSettings({ cronTimeStamp }); return;
 }
 
-app.get(ROUTES.RESET_LEADERBOARD,authenticate, async (req, res) => {
+app.post(ROUTES.RESET_LEADERBOARD, authenticate, async (req, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
-await resetLeaderboard();
+        await resetLeaderboard();
         return res.json({ message: 'Wages reset' });
     } catch (err) {
         return res.status(err.code).json({ err: err.toString() });
     }
 });
-app.post(ROUTES.SETTINGS,authenticate, async ({body:{resetMode, cronExpression, ...settingsObj}}, res) => {
+app.post(ROUTES.SETTINGS, authenticate, async ({ body: { resetMode, cronExpression, ...settingsObj } }, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
-        const settingsList =await setSettings(settingsObj);
-        return res.json({ message: 'Settings changed', ...settingsList});
+        const settingsList = await setSettings(settingsObj);
+        return res.json({ message: 'Settings changed', ...settingsList });
     } catch (err) {
         return res.status(err.code).json({ err: err.toString() });
     }
 });
-app.post(ROUTES.CRON,authenticate, async ({body:{cronExpression, resetMode}}, res) => {
+app.post(ROUTES.CRON, authenticate, async ({ body: { cronExpression, resetMode } }, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
-        const settingsList =await setSettings({cronExpression,resetMode});
+        const settingsList = await setSettings({ cronExpression, resetMode });
         await scheduleTask();
-        return res.json({ message: 'Settings changed', ...settingsList});
+        return res.json({ message: 'Settings changed', ...settingsList });
     } catch (err) {
         return res.status(err.code).json({ err: err.toString() });
     }
 });
-app.get(ROUTES.SETTINGS,authenticate, async (req, res) => {
+app.get(ROUTES.SETTINGS, authenticate, async (req, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
         return res.json(
@@ -322,32 +366,32 @@ app.get(ROUTES.SETTINGS,authenticate, async (req, res) => {
     }
 });
 
-app.post(ROUTES.SHOP,authenticate, async (req, res) => {
+app.post(ROUTES.SHOP, authenticate, async (req, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
-const [item]= await setShopItem(req.body);
-        return res.json({ message: 'Added shop items', item});
+        const [item] = await setShopItem(req.body);
+        return res.json({ message: 'Added shop items', item });
 
     } catch (err) {
         return res.json({ err: err.toString() });
     }
 });
-app.delete(ROUTES.SHOP,authenticate, async (req, res) => {
+app.delete(ROUTES.SHOP, authenticate, async (req, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
         console.log(req.body);
-        
-const item= await deleteShopItem(req.body.item_id);
-        return res.json({ message: 'Deleted shop item', item});
+
+        const item = await deleteShopItem(req.body.item_id);
+        return res.json({ message: 'Deleted shop item', item });
 
     } catch (err) {
         return res.json({ err: err.toString() });
     }
 });
-app.get(ROUTES.SHOP,authenticate, async (req, res) => {
+app.get(ROUTES.SHOP, authenticate, async (req, res) => {
     try {
-const items= await getShopItems();
-        return res.json({ message: 'fetched shop items', items, casinoWallets:Object.keys(CASINO_OPS).filter(casinoId=>CASINO_OPS[casinoId].sendBalance!=null) });
+        const items = await getShopItems();
+        return res.json({ message: 'fetched shop items', items, casinoWallets: Object.keys(CASINO_OPS).filter(casinoId => CASINO_OPS[casinoId].sendBalance != null) });
 
     } catch (err) {
         return res.json({ err: err.toString() });

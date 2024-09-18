@@ -57,7 +57,9 @@ export const getShopItems = async () => {
 }
 const parse = ({minAmount,maxAmount,price,...record})=>({...record,minAmount:parseFloat(minAmount), maxAmount:parseFloat(maxAmount), price:parseFloat(price)})
 export const getShopItem = async (item_id) =>  parse(await shop_items.findOne({where:{item_id}}  ));
-
+export const deleteCasinoUser = async ({user_id,casino_user_id}) => {
+    return await users_casinos.destroy({where: {user_id, casino_user_id}});
+}
 // export const getUsersCasino = async (casino_id,userIds,casinoUserIds)=>await users_casinos.findAll({where:{
 //         casino_id,user_id:{[Op.in]:userIds} ,casino_user_id:{[Op.in]:casinoUserIds}, 
 // },}); 
@@ -68,7 +70,7 @@ sq.sync({ alter: true }).then(async () => {
     await casinos.bulkCreate(
         [
             { id: '500casino', name: '500casino', link: 'https://500.casino' },
-            { id: 'bet1', name: 'bet1', link: 'https://bet1.com' },
+            { id: 'razed', name: 'razed', link: 'https://www.razed.com/' },
         ],
         { updateOnDuplicate: ['name', 'link'] });
 }).catch((err) => { console.error(err); });

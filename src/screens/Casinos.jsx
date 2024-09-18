@@ -80,7 +80,7 @@ const Casinos = () => {
           Object.entries(leaderBoard.casinos).map(
             ([casino_id, casinoData]) =>
               <>
-                <h4>LEADERBOARD for {casinoId}</h4>
+                <h4>LEADERBOARD for {casino_id}</h4>
                 <br />
                 referralCode: {casinoData.referralCode}
                 <br />

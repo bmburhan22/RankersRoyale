@@ -6,6 +6,7 @@ import ROUTES from '../../utils/routes';
 import { useAuth } from '../utils/auth';
 import { Button } from 'react-bootstrap';
 import { DataGrid, GridActionsCellItem, GridColDef, GridDeleteIcon } from '@mui/x-data-grid';
+const nextNumber= numbers=>1 + numbers.reduce((a, b) => (a > b ? a : b)) ||0
 const AdminHome = () => {
   const [items, setItems] = useState([]);
   const [members, setMembers] = useState([]);
@@ -14,10 +15,12 @@ const AdminHome = () => {
   const getShopItems = async () => await get(ROUTES.SHOP).then(r => setItems(r.data.items));
   const setShopItem = async (item) => await post(ROUTES.SHOP, item).then(getShopItems)
   const updateMember = async (targetRec) => await post(ROUTES.MEMBERS, targetRec).then(getMembers);
+  const deleteMember = async (targetRec) => await del(ROUTES.MEMBERS, targetRec).then(getMembers);
+  const resetLeaderboard = async () => await post(ROUTES.RESET_LEADERBOARD).then(getMembers);
   const getMembers = async () => {
-    await get(ROUTES.MEMBERS).then(m => {
+    return await get(ROUTES.MEMBERS).then(m => {
       console.log(m);
-      ; setMembers(m.data);
+      ;return setMembers(m.data);
     });
   }
 
@@ -52,19 +55,31 @@ const AdminHome = () => {
 
       <Button onClick={setSettings} >Settings</Button>
       <Button onClick={setCronSettings} >Cron Settings</Button>
+      <Button onClick={resetLeaderboard} >Reset Leaderboard</Button>
+      <Button variant='contained' onClick={() => setMembers(m => [...m, {
+        id: nextNumber(members.map(m=>m.user_id)),
+      }]
+      )}>ADD member</Button>
       <DataGrid processRowUpdate={updateMember} editMode='row' getRowId={({ user_id, casino_id }) => user_id + '-' + casino_id} columns={[
-        { field: 'user_id' },
-        { field: "casino_id" },
+        { field: 'user_id', editable:true },
+        { field: "casino_id", editable:true },
         { field: "prev_wager_checkpoint", editable: true },
         { field: "curr_wager_checkpoint", editable: true },
         { field: "username" },
         { field: "discriminator" },
         { field: "casino_user_id", editable: true },
-        { field: "total_points", editable: true }]}
+        { field: "total_points", editable: true },
+        {
+          field: 'actions',
+          type: 'actions',
+          getActions: (params) => [
+            <GridActionsCellItem icon={<GridDeleteIcon/>} onClick={()=>deleteMember( params.row)} label="Delete" />]
+          },
+      ]}
         rows={members}
       />
       <Button variant='contained' onClick={() => setItems(i => [...i, {
-        item_id: 1 + items.reduce((a, b) => (a.item_id > b.item_id ? a : b)).item_id ||0
+        item_id: nextNumber(items.map(i=>i.item_id))
       }]
       )}>ADD</Button>
       
