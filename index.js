@@ -56,7 +56,8 @@ const CASINO_OPS = {
 
             return await axios.post('https://tradingapi.500.casino/api/v1/user/balance/send',
                 { destinationUserId, value: value * this.initData.inverseRate, balanceType }, { headers: { 'x-500-auth': API_KEY_500 }, })
-                .catch(err => ({ ...err.response, success: false }))
+                .then(r=>r.data)
+                .catch(err => {console.log(err); return{ ...err.response.data, success: false }})
                 ;
         }
     }().init()),
@@ -66,35 +67,33 @@ const CASINO_OPS = {
     'razed': await (new class Razed {
         init = async () => await fetch('https://api.razed.com/player/api/v1/profile',
             {
-                headers: { Authorization: 'Bearer ' + API_KEY_RAZED }
+                headers: {Authorization: 'Bearer ' + API_KEY_RAZED }
             },)
-            .then(async r => r.json())
+            .then(r=>r.json())
+            // .then(async r=>{fs.writeFileSync('t.txt', r.toString()); return r.json();})
             .then(async ({ referral_code: referralCode }) => {
-                // const { rate, inverseRate } = siteSettings.currencyRates.bux.usd;
                 const referralLink = "https://www.razed.com/signup/?raf=" + referralCode
                 this.initData = { rate: 1, currencies: ['usd'], inverseRate: 1, referralCode, referralLink }
                 return this;
             })
-        // .catch(e=>fs.writeFileSync('t.txt',JSON.stringify(e)));
         getLeaderboard = async () => {
-            const r = await axios.get("https://api.razed.com/player/api/v1/referrals/leaderboard",
-                {
-                    data: { referral_code: "Razedreloads,Chrisspinsslots,ReloadsJP,Reloads", from: "0001-01-01", to: "9999-12-31", top: 100 },
-                    headers:
-                        { "Content-Type":'application/json', Authorization: API_KEY_RAZED_REF },
-                }
-            ).catch(r => {
-                console.log(r);
-            })
+            const r = await fetch("https://api.razed.com/player/api/v1/referrals/leaderboard?from=0001-01-01&referral_code=Razedreloads%2CChrisspinsslots%2CReloadsJP%2CReloads&to=9999-12-31&top=100",
+                {headers: { 'X-Referral-Key': API_KEY_RAZED_REF },},
+            ).then(r=>r.json());
             return r.data.map(u => ({ casino_user_id: u.username, total_wager: this.initData.rate * u.wagered }));
         };
         sendBalance = async (receiver_username, amount, balanceType) => {
-            console.log({ amount });
+            console.log({ amount , receiver_username});
 
-            return await axios.post('https://api.razed.com/player/api/v1/tips',
-                { receiver_username, amount, otp_code: "", is_public_tip: true },
-                { headers: { Authorization: 'Bearer ' + API_KEY_RAZED } },
-            ).catch(err => ({ ...err.response, success: false }))
+            return await fetch('https://api.razed.com/player/api/v1/tips',
+                {method:'POST', headers: { Authorization: 'Bearer ' + API_KEY_RAZED } ,
+            body: { receiver_username, amount, otp_code: "", is_public_tip: true },
+
+            },
+            )
+            .then(async r=>{console.log({THIS:await r.json()}); return await r.json()})
+            .catch(err => {console.log(err); return{ ...err, success: false }})
+
                 ;
         }
     }().init())
@@ -233,8 +232,8 @@ const sendBalance = async ({ user_id, casinoId, amount, price, balanceType }) =>
     const { casino_user_id } = await users_casinos.findOne({ where: { user_id, casino_id: casinoId } });
     console.log({ casino_user_id, total_points: user.total_points });
     const r = await CASINO_OPS[casinoId].sendBalance(casino_user_id, amount, balanceType);
-    console.log({ success: r.data });
-    if (r.data.success) {
+    console.log(r );
+    if (r.success) {
         user.total_points -= price;
         await user.save();
     }
@@ -246,23 +245,24 @@ app.post(ROUTES.REDEEM, authenticate, async (req, res) => {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
         const price = parseFloat(req.body.amount) * await getSettingsNum('pointsPerDollar');
         const r = await sendBalance({ price, user_id: res.locals.member.id, ...req.body });
-        return res.json(r.data);
+        return res.json(r);
     } catch (err) {
-        return res.status(err.code).json({ code: err.code, err: err.toString() });
+        return res//.status(err.code)
+        .json({ code: err.code, err: err.toString() });
     }
 });
 const random = (min, max) => Math.random() * (max - min) + min;
 
 app.post(ROUTES.BUY, authenticate, async ({ body: { item_id, balanceType, casinoId } }, res) => {
     try {
-        if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
+        // if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
         const { minAmount, maxAmount, price } = await getShopItem(item_id);
         if (!(minAmount && maxAmount && price)) throw new ErrorCode(403, 'Item not found');
         const amount = random(minAmount, maxAmount);
         console.log({ item_id, price, amount, minAmount, maxAmount });
 
         const r = await sendBalance({ balanceType, casinoId, amount, price, user_id: res.locals.member.id, });
-        return res.json(r.data);
+        return res.json(r);
     } catch (err) {
         return res.json({ code: err.code, err: err.toString() });
     }

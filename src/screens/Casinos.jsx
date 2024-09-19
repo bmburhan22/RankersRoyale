@@ -12,9 +12,9 @@ const Casinos = () => {
   const CASINO_OBJ = { bet1: null, '500casino': null };
 
   const { post, get } = useAuth();
-  const { pathname } = useLocation();
+  // const { pathname } = useLocation();
   const [inputData, setInputData] = useState(CASINO_OBJ);
-  const [casinoData, setCasinoData] = useState(CASINO_OBJ);
+  // const [casinoData, setCasinoData] = useState(CASINO_OBJ);
   // const [members, setMembers] = useState([]);
   const [leaderBoard, setLeaderboard] = useState({ total: {}, casinos: {} });
   const [amount, setAmount] = useState(0);
@@ -35,23 +35,23 @@ const Casinos = () => {
   // }
 
   const setCasinoUserId = (casinoUserId) => post(ROUTES.CASINOS, casinoUserId);
-  const getCasinoUserId = async () => {
-    const res = await get(ROUTES.CASINOS);
-    console.log({ st: res.status, ob: res.data });
+  // const getCasinoUserId = async () => {
+  //   const res = await get(ROUTES.CASINOS);
+  //   console.log({ st: res.status, ob: res.data });
 
-    if (res.status != 200) { setCasinoData(CASINO_OBJ); return; }
-    setCasinoData(
-      res.data.user_casino?.reduce((acc, rec) => {
-        acc[rec.casino_id] = rec.casino_user_ids;
-        return acc;
-      }, {}))
-  }
+  //   if (res.status != 200) { setCasinoData(CASINO_OBJ); return; }
+  //   setCasinoData(
+  //     res.data.user_casino?.reduce((acc, rec) => {
+  //       acc[rec.casino_id] = rec.casino_user_ids;
+  //       return acc;
+  //     }, {}))
+  // }
 
   const sendBalance = async () => await post(ROUTES.REDEEM, { amount, balanceType, casinoId }).catch(alert);
   const redeemItem = async ({item_id,minAmount, maxAmount}) => await post(ROUTES.BUY, { item_id, casinoId,balanceType }).catch(alert);
 
   useEffect(() => {
-    getCasinoUserId();
+    // getCasinoUserId();
     // getCasinoMembers();
     getLeadboard();
     getShopItems();
@@ -127,19 +127,17 @@ const Casinos = () => {
          {casinoWallets.map(cw=><MenuItem value={cw}>{cw}</MenuItem>)}
             </Select>
             <Button variant='contained' onClick={sendBalance}>Send</Button>
-            <h3>{casinoData?.['500casino']}</h3>
-            <TextField label='500casino username' variant='outlined'
-              onChange={e => setInputData(v => { return { ...v, '500casino': e.target.value } })
-              } />
-
-            <Button variant='contained' onClick={() => setCasinoUserId({ casino_id: '500casino', casino_user_id: inputData['500casino'] })}>Submit</Button>
-          </Col>
+{Object.entries(leaderBoard.casinos).map (([casinoId, casinoData])=> <Row>
+<TextField label={casinoId+ ' username'} variant='outlined'onChange={e => setInputData(v => { return { ...v, [casinoId]: e.target.value } })} />
+<Button variant='contained' onClick={() => setCasinoUserId({ casino_id: casinoId, casino_user_id: inputData[casinoId] })}>Submit</Button>
+</Row>
+)
+          }          </Col>
           <Col>
-            <h3>{casinoData?.bet1}</h3>
-
+            {/* <h3>{casinoData?.bet1}</h3>
             <TextField label='bet1 username' variant='outlined'
               onChange={e => setInputData(v => { return { ...v, bet1: e.target.value } })} />
-            <Button variant='contained' onClick={() => setCasinoUserId({ casino_id: 'bet1', casino_user_id: inputData.bet1 })}>Submit</Button>
+            <Button variant='contained' onClick={() => setCasinoUserId({ casino_id: 'bet1', casino_user_id: inputData.bet1 })}>Submit</Button> */}
           </Col>
         </Row>
 
