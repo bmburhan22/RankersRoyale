@@ -11,6 +11,8 @@ import bot from './utils/discordBot.js';
 import { casinos, deleteCasinoUser, deleteShopItem, getCasinosByUserIds, getSettings, getSettingsNum, getShopItem, getShopItems, getUserById, setSettings, setShopItem, users, users_casinos } from './utils/db.js';
 import { Op } from 'sequelize';
 import cron from 'node-cron';
+import * as cheerio from 'cheerio';
+import fs from 'fs'
 dotenv.config();
 const { PORT, JWT_SECRET, API_KEY_500, API_KEY_RAZED, API_KEY_RAZED_REF, DISCORD_ADMIN_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET } = process.env;
 
@@ -23,7 +25,7 @@ const CLIENT_ROUTES = [
 
 const app = express();
 const frontend_path = path.join(path.resolve(), 'dist');
-app.use(express.static(frontend_path));
+app.use(express.static(frontend_path, {index:false}));
 
 app.use(cors());
 app.use(json());
@@ -36,7 +38,6 @@ class ErrorCode extends Error {
         this.name = this.constructor.name;
     }
 }
-import fs from 'fs'
 const CASINO_OPS = {
     '500casino': await (new class _500casino {
         init = async () => await axios.get('https://500.casino/api/boot', { headers: { 'x-500-auth': API_KEY_500 } }).then(({ data: { userData: { referralCode }, siteSettings, balances: { crypto: currencies } } }) => {
@@ -56,8 +57,8 @@ const CASINO_OPS = {
 
             return await axios.post('https://tradingapi.500.casino/api/v1/user/balance/send',
                 { destinationUserId, value: value * this.initData.inverseRate, balanceType }, { headers: { 'x-500-auth': API_KEY_500 }, })
-                .then(r=>r.data)
-                .catch(err => {console.log(err); return{ ...err.response.data, success: false }})
+                .then(r => r.data)
+                .catch(err => { console.log(err); return { ...err.response.data, success: false } })
                 ;
         }
     }().init()),
@@ -67,9 +68,9 @@ const CASINO_OPS = {
     'razed': await (new class Razed {
         init = async () => await fetch('https://api.razed.com/player/api/v1/profile',
             {
-                headers: {Authorization: 'Bearer ' + API_KEY_RAZED }
+                headers: { Authorization: 'Bearer ' + API_KEY_RAZED }
             },)
-            .then(r=>r.json())
+            .then(r => r.json())
             // .then(async r=>{fs.writeFileSync('t.txt', r.toString()); return r.json();})
             .then(async ({ referral_code: referralCode }) => {
                 const referralLink = "https://www.razed.com/signup/?raf=" + referralCode
@@ -78,21 +79,22 @@ const CASINO_OPS = {
             })
         getLeaderboard = async () => {
             const r = await fetch("https://api.razed.com/player/api/v1/referrals/leaderboard?from=0001-01-01&referral_code=Razedreloads%2CChrisspinsslots%2CReloadsJP%2CReloads&to=9999-12-31&top=100",
-                {headers: { 'X-Referral-Key': API_KEY_RAZED_REF },},
-            ).then(r=>r.json());
+                { headers: { 'X-Referral-Key': API_KEY_RAZED_REF }, },
+            ).then(r => r.json());
             return r.data.map(u => ({ casino_user_id: u.username, total_wager: this.initData.rate * u.wagered }));
         };
         sendBalance = async (receiver_username, amount, balanceType) => {
-            console.log({ amount , receiver_username});
+            console.log({ amount, receiver_username });
 
             return await fetch('https://api.razed.com/player/api/v1/tips',
-                {method:'POST', headers: { Authorization: 'Bearer ' + API_KEY_RAZED } ,
-            body: { receiver_username, amount, otp_code: "", is_public_tip: true },
+                {
+                    method: 'POST', headers: { Authorization: 'Bearer ' + API_KEY_RAZED },
+                    body: { receiver_username, amount, otp_code: "", is_public_tip: true },
 
-            },
+                },
             )
-            .then(async r=>{console.log({THIS:await r.json()}); return await r.json()})
-            .catch(err => {console.log(err); return{ ...err, success: false }})
+                .then(async r => { console.log({ THIS: await r.json() }); return await r.json() })
+                .catch(err => { console.log(err); return { ...err, success: false } })
 
                 ;
         }
@@ -232,7 +234,7 @@ const sendBalance = async ({ user_id, casinoId, amount, price, balanceType }) =>
     const { casino_user_id } = await users_casinos.findOne({ where: { user_id, casino_id: casinoId } });
     console.log({ casino_user_id, total_points: user.total_points });
     const r = await CASINO_OPS[casinoId].sendBalance(casino_user_id, amount, balanceType);
-    console.log(r );
+    console.log(r);
     if (r.success) {
         user.total_points -= price;
         await user.save();
@@ -248,7 +250,7 @@ app.post(ROUTES.REDEEM, authenticate, async (req, res) => {
         return res.json(r);
     } catch (err) {
         return res//.status(err.code)
-        .json({ code: err.code, err: err.toString() });
+            .json({ code: err.code, err: err.toString() });
     }
 });
 const random = (min, max) => Math.random() * (max - min) + min;
@@ -294,18 +296,6 @@ app.delete(ROUTES.MEMBERS, async ({ body: { user_id, casino_user_id } }, res) =>
         const r = deleteCasinoUser({ user_id, casino_user_id });
         return res.json(r);
 
-    } catch (err) {
-        return res.json({ err: err.toString() });
-    }
-});
-app.get('/api/setwager', authenticate, async ({ query: { casino_id, curr, prev } }, res) => {
-    try {
-
-        const cu = await users_casinos.findOne({ where: { casino_id, user_id: res.locals.member.id } })
-        cu.prev_wager_checkpoint = prev;
-        cu.curr_wager_checkpoint = curr;
-        await cu.save();
-        return res.json({ message: 'Wages set' });
     } catch (err) {
         return res.json({ err: err.toString() });
     }
@@ -388,7 +378,7 @@ app.delete(ROUTES.SHOP, authenticate, async (req, res) => {
         return res.json({ err: err.toString() });
     }
 });
-app.get(ROUTES.SHOP, authenticate, async (req, res) => {
+app.get(ROUTES.SHOP,  async (req, res) => {
     try {
         const items = await getShopItems();
         return res.json({ message: 'fetched shop items', items, casinoWallets: Object.keys(CASINO_OPS).filter(casinoId => CASINO_OPS[casinoId].sendBalance != null) });
@@ -398,7 +388,15 @@ app.get(ROUTES.SHOP, authenticate, async (req, res) => {
     }
 });
 app.get(ROUTES.LOGIN, async (req, res) => res.redirect(DISCORD_OAUTH2_URL));
-app.get(CLIENT_ROUTES, (req, res) => res.sendFile(path.join(frontend_path, 'index.html')));
+let viteHTML = fs.readFileSync(path.join(frontend_path, 'index.html'));
+const getHTML = async (req,res) => {
+    const casinoData = await getCasinoUsers();
+    const $ = cheerio.load(viteHTML);
+    $('body').append(`<script id="initData">${JSON.stringify(casinoData)}</script>`)
+    return res.send($.html());
+}
+
+app.get(CLIENT_ROUTES, getHTML);
 app.get('*', (req, res) => res.redirect(ROUTES.HOME));
 
 const { port } = app.listen(PORT).address();
