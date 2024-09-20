@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useLayoutEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../utils/auth';
 import { useLocation, useNavigate } from 'react-router-dom';
-import ROUTES from '../../utils/routes';
+import {ROUTES} from '../../utils/routes';
 import { CssBaseline, Box, TextField, Button, Divider, Select, MenuItem, InputLabel } from '@mui/material';
 
 import { Row, } from 'react-bootstrap';
@@ -35,8 +35,8 @@ const Casinos = () => {
   const redeemItem = async ({ item_id, minAmount, maxAmount }) => await post(ROUTES.BUY, { item_id, casinoId, balanceType }).catch(alert);
 
   useEffect(() => {
-    // getLeadboard();
-    getLeadboardFromInitData();
+    getLeadboard();
+    // getLeadboardFromInitData();
     getShopItems();
   }, []);
   return (

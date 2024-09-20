@@ -18,9 +18,9 @@ export const users = sq.define('users',
         , username: { type: STRING }, discriminator: { type: STRING }, total_points: { type: DECIMAL(1000, 2), defaultValue: 0 }
     }
     , { freezeTableName: true, timestamps: false });
-export const casinos = sq.define('casinos',
-    { id: { primaryKey: true, type: STRING }, name: { type: STRING }, link: { type: STRING }, }
-    , { freezeTableName: true, timestamps: false });
+// export const casinos = sq.define('casinos',
+//     { id: { primaryKey: true, type: STRING }, name: { type: STRING }, link: { type: STRING }, }
+//     , { freezeTableName: true, timestamps: false });
 export const users_casinos = sq.define('users_casinos',
     {
         user_id: { primaryKey: true, type: STRING , allowNull:false}, casino_id: { type: STRING, primaryKey: true,allowNull:false }, casino_user_id: { type: STRING },
@@ -67,10 +67,10 @@ export const deleteCasinoUser = async ({user_id,casino_user_id}) => {
 sq.sync({ alter: true }).then(async () => {
     // static casino data
     await setSettings({ wagerPerPoint: 5, pointsPerDollar:100  });
-    await casinos.bulkCreate(
-        [
-            { id: '500casino', name: '500casino', link: 'https://500.casino' },
-            { id: 'razed', name: 'razed', link: 'https://www.razed.com/' },
-        ],
-        { updateOnDuplicate: ['name', 'link'] });
+    // await casinos.bulkCreate(
+    //     [
+    //         { id: '500casino', name: '500casino', link: 'https://500.casino' },
+    //         { id: 'razed', name: 'razed', link: 'https://www.razed.com/' },
+    //     ],
+    //     { updateOnDuplicate: ['name', 'link'] });
 }).catch((err) => { console.error(err); });

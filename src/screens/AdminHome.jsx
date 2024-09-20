@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import { Box, CssBaseline, Icon, MenuItem, Select, TextField } from '@mui/material';
 import { Link, useLocation } from 'react-router-dom';
-import ROUTES from '../../utils/routes';
+import {ROUTES} from '../../utils/routes';
 import { useAuth } from '../utils/auth';
 import { Button } from 'react-bootstrap';
 import { DataGrid, GridActionsCellItem, GridColDef, GridDeleteIcon } from '@mui/x-data-grid';

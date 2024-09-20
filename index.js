@@ -6,26 +6,22 @@ import express, { json } from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import path from 'path';
-import ROUTES from './utils/routes.js';
+import {ROUTES, CLIENT_ROUTES, DISCORD_API} from './utils/routes.js';
 import bot from './utils/discordBot.js';
-import { casinos, deleteCasinoUser, deleteShopItem, getCasinosByUserIds, getSettings, getSettingsNum, getShopItem, getShopItems, getUserById, setSettings, setShopItem, users, users_casinos } from './utils/db.js';
+import {  deleteCasinoUser, deleteShopItem, getCasinosByUserIds, getSettings, getSettingsNum, getShopItem, getShopItems, getUserById, setSettings, setShopItem, users, users_casinos } from './utils/db.js';
 import { Op } from 'sequelize';
 import cron from 'node-cron';
+import casinos from './utils/casinos.js';
 import * as cheerio from 'cheerio';
 import fs from 'fs'
 dotenv.config();
-const { PORT, JWT_SECRET, API_KEY_500, API_KEY_RAZED, API_KEY_RAZED_REF, DISCORD_ADMIN_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET } = process.env;
+const { PORT, JWT_SECRET,  DISCORD_ADMIN_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET } = process.env;
 
-const DISCORD_API = 'https://discord.com/api';
-const CLIENT_ROUTES = [
-    ROUTES.HOME,
-    ROUTES.CASINOS_PAGE,
-    ROUTES.ADMIN_HOME,
-];
+
 
 const app = express();
-const frontend_path = path.join(path.resolve(), 'dist');
-app.use(express.static(frontend_path, {index:false}));
+const VITE_PATH = path.join(path.resolve(), 'dist');
+app.use(express.static(VITE_PATH, {index:false}));
 
 app.use(cors());
 app.use(json());
@@ -38,68 +34,7 @@ class ErrorCode extends Error {
         this.name = this.constructor.name;
     }
 }
-const CASINO_OPS = {
-    '500casino': await (new class _500casino {
-        init = async () => await axios.get('https://500.casino/api/boot', { headers: { 'x-500-auth': API_KEY_500 } }).then(({ data: { userData: { referralCode }, siteSettings, balances: { crypto: currencies } } }) => {
-            const { rate, inverseRate } = siteSettings.currencyRates.bux.usd;
-            const referralLink = "https://500.casino/r/" + referralCode
-            this.initData = { rate, currencies, inverseRate, referralCode, referralLink }
-            return this;
-        });
-        getLeaderboard = async () => {
-            const r = await axios.post("https://500.casino/api/rewards/affiliate-users",
-                { sorting: { totalPlayed: -1 } }, { headers: { 'x-500-auth': API_KEY_500 } }
-            );
-            return r.data.results.map(u => ({ casino_user_id: u._id, total_wager: this.initData.rate * u.totalPlayed }));
-        };
-        sendBalance = async (destinationUserId, value, balanceType) => {
-            console.log({ value, converted: value * this.initData.inverseRate });
 
-            return await axios.post('https://tradingapi.500.casino/api/v1/user/balance/send',
-                { destinationUserId, value: value * this.initData.inverseRate, balanceType }, { headers: { 'x-500-auth': API_KEY_500 }, })
-                .then(r => r.data)
-                .catch(err => { console.log(err); return { ...err.response.data, success: false } })
-                ;
-        }
-    }().init()),
-
-
-
-    'razed': await (new class Razed {
-        init = async () => await fetch('https://api.razed.com/player/api/v1/profile',
-            {
-                headers: { Authorization: 'Bearer ' + API_KEY_RAZED }
-            },)
-            .then(r => r.json())
-            // .then(async r=>{fs.writeFileSync('t.txt', r.toString()); return r.json();})
-            .then(async ({ referral_code: referralCode }) => {
-                const referralLink = "https://www.razed.com/signup/?raf=" + referralCode
-                this.initData = { rate: 1, currencies: ['usd'], inverseRate: 1, referralCode, referralLink }
-                return this;
-            })
-        getLeaderboard = async () => {
-            const r = await fetch("https://api.razed.com/player/api/v1/referrals/leaderboard?from=0001-01-01&referral_code=Razedreloads%2CChrisspinsslots%2CReloadsJP%2CReloads&to=9999-12-31&top=100",
-                { headers: { 'X-Referral-Key': API_KEY_RAZED_REF }, },
-            ).then(r => r.json());
-            return r.data.map(u => ({ casino_user_id: u.username, total_wager: this.initData.rate * u.wagered }));
-        };
-        sendBalance = async (receiver_username, amount, balanceType) => {
-            console.log({ amount, receiver_username });
-
-            return await fetch('https://api.razed.com/player/api/v1/tips',
-                {
-                    method: 'POST', headers: { Authorization: 'Bearer ' + API_KEY_RAZED },
-                    body: { receiver_username, amount, otp_code: "", is_public_tip: true },
-
-                },
-            )
-                .then(async r => { console.log({ THIS: await r.json() }); return await r.json() })
-                .catch(err => { console.log(err); return { ...err, success: false } })
-
-                ;
-        }
-    }().init())
-}
 let task;
 const scheduleTask = async () => {
     const { resetMode, cronExpression } = await getSettings();
@@ -122,7 +57,7 @@ const authenticate = async (req, res, next) => {
             return user_id;
         });
 
-        const member = (await bot.fetchVerifiedMembers()).find(m => m.id == user_id)
+        const member = bot.verifiedMembers.find(m => m.id == user_id)
         if (!member) throw new ErrorCode(403, 'Not a verified server member');
         member.isAdmin = member.roles.cache.has(DISCORD_ADMIN_ROLE_ID)
         res.locals.member = member;
@@ -151,13 +86,13 @@ app.get(REDIRECT, async ({ query: { code } }, res) => {
     }
 });
 
-const getCasinoUsers = async (casinoIds = Object.keys(CASINO_OPS)) => {
+const getCasinoUsers = async (casinoIds = Object.keys(casinos)) => {
     let casinoData = { 'casinos': {}, total: {} };
-    const userIds = (await bot.fetchVerifiedMembers()).map(m => m.id); // discord verified userIds 
+    const userIds = bot.verifiedMembers.map(m => m.id); // discord verified userIds 
 
     for await (let casinoId of casinoIds) {
-        casinoData['casinos'][casinoId] = CASINO_OPS[casinoId].initData;
-        let casinoUsers = await CASINO_OPS[casinoId].getLeaderboard(); // add discord verification
+        casinoData['casinos'][casinoId] = casinos[casinoId].initData;
+        let casinoUsers = await casinos[casinoId].getLeaderboard(); // add discord verification
         console.log({ casinoUsers });
 
         for await (let c of casinoUsers) {
@@ -212,8 +147,8 @@ app.get(ROUTES.ME, authenticate, async (req, res) => {
 
 app.post(ROUTES.CASINOS, authenticate, async ({ body: { casino_id, casino_user_id } }, res) => {
     try {
-        const casino = await casinos.findOne({ where: { id: casino_id } });
-        if (!casino) return res.json({ 'msg': 'Invalid casino' });
+        // const casino = await casinos.findOne({ where: { id: casino_id } });
+        if (!casinos[casino_id]) return res.json({ 'msg': 'Invalid casino' });
         const user_casino = await users_casinos.upsert({ user_id: res.locals.member.id, casino_id, casino_user_id });
         return res.json(user_casino);
     } catch (err) {
@@ -221,7 +156,7 @@ app.post(ROUTES.CASINOS, authenticate, async ({ body: { casino_id, casino_user_i
     }
 });
 const round = val => Math.floor(parseFloat(val) * 100) / 100;
-const sendBalance = async ({ user_id, casinoId, amount, price, balanceType }) => {
+const transaction = async ({ user_id, casinoId, amount, price, balanceType }) => {
     console.log({ amount, price, rounded: round(amount) });
     amount = round(amount);
     price = round(price);
@@ -233,7 +168,7 @@ const sendBalance = async ({ user_id, casinoId, amount, price, balanceType }) =>
     if (user.total_points <= price) throw new ErrorCode(400, 'Insufficient points');
     const { casino_user_id } = await users_casinos.findOne({ where: { user_id, casino_id: casinoId } });
     console.log({ casino_user_id, total_points: user.total_points });
-    const r = await CASINO_OPS[casinoId].sendBalance(casino_user_id, amount, balanceType);
+    const r = await casinos[casinoId].sendBalance(casino_user_id, amount, balanceType);
     console.log(r);
     if (r.success) {
         user.total_points -= price;
@@ -246,7 +181,7 @@ app.post(ROUTES.REDEEM, authenticate, async (req, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
         const price = parseFloat(req.body.amount) * await getSettingsNum('pointsPerDollar');
-        const r = await sendBalance({ price, user_id: res.locals.member.id, ...req.body });
+        const r = await transaction({  ...req.body , price, user_id: res.locals.member.id, });
         return res.json(r);
     } catch (err) {
         return res//.status(err.code)
@@ -263,7 +198,7 @@ app.post(ROUTES.BUY, authenticate, async ({ body: { item_id, balanceType, casino
         const amount = random(minAmount, maxAmount);
         console.log({ item_id, price, amount, minAmount, maxAmount });
 
-        const r = await sendBalance({ balanceType, casinoId, amount, price, user_id: res.locals.member.id, });
+        const r = await transaction({ balanceType, casinoId, amount, price, user_id: res.locals.member.id, });
         return res.json(r);
     } catch (err) {
         return res.json({ code: err.code, err: err.toString() });
@@ -381,19 +316,21 @@ app.delete(ROUTES.SHOP, authenticate, async (req, res) => {
 app.get(ROUTES.SHOP,  async (req, res) => {
     try {
         const items = await getShopItems();
-        return res.json({ message: 'fetched shop items', items, casinoWallets: Object.keys(CASINO_OPS).filter(casinoId => CASINO_OPS[casinoId].sendBalance != null) });
+        return res.json({ message: 'fetched shop items', items, casinoWallets: Object.keys(casinos).filter(casinoId => casinos[casinoId].sendBalance != null) });
 
     } catch (err) {
         return res.json({ err: err.toString() });
     }
 });
 app.get(ROUTES.LOGIN, async (req, res) => res.redirect(DISCORD_OAUTH2_URL));
-let viteHTML = fs.readFileSync(path.join(frontend_path, 'index.html'));
+
+let viteHTML = fs.readFileSync(path.join(VITE_PATH, 'index.html'));
 const getHTML = async (req,res) => {
-    const casinoData = await getCasinoUsers();
-    const $ = cheerio.load(viteHTML);
-    $('body').append(`<script id="initData">${JSON.stringify(casinoData)}</script>`)
-    return res.send($.html());
+return     res.sendFile(path.join(VITE_PATH, 'index.html'));
+    // const casinoData = await getCasinoUsers();
+    // const $ = cheerio.load(viteHTML);
+    // $('body').append(`<script id="initData">${JSON.stringify(casinoData)}</script>`)
+    // return res.send($.html());
 }
 
 app.get(CLIENT_ROUTES, getHTML);

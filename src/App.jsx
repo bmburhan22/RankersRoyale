@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Navigate, Routes, Route, BrowserRouter } from 'react-router-dom'
 
 import { AuthProvider } from './utils/auth';
-import ROUTES from '../utils/routes';
+import {ROUTES} from '../utils/routes';
 import { BrowseGalleryTwoTone } from '@mui/icons-material';
 import Home from './screens/Home';
 import Casinos from './screens/Casinos';
