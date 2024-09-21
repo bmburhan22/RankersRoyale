@@ -85,46 +85,86 @@ app.get(REDIRECT, async ({ query: { code } }, res) => {
         return res.json({ err: err.toString() });
     }
 });
+const calcWager = (total_wager, wager_checkpoint)=>Math.max(0, total_wager - (wager_checkpoint ?? total_wager))
+let casinoLeaderboards = {'casinos':{},total:{}};
+const getCasinoLeaderboards = async () => {
+    console.log('updating leaderboard')
+    let leaderboards = { ts: new Date(Date.now()).toLocaleString(),'casinos': {}, total: {} };
+    const userIds = bot.verifiedMembers.map(m => m.id); 
 
-const getCasinoUsers = async (casinoIds = Object.keys(casinos)) => {
-    let casinoData = { 'casinos': {}, total: {} };
-    const userIds = bot.verifiedMembers.map(m => m.id); // discord verified userIds 
-
-    for await (let casinoId of casinoIds) {
-        casinoData['casinos'][casinoId] = casinos[casinoId].initData;
-        let casinoUsers = await casinos[casinoId].getLeaderboard(); // add discord verification
-        console.log({ casinoUsers });
-
-        for await (let c of casinoUsers) {
-            c.casino_user = await users_casinos.findOne({
-                where: {
-                    casino_user_id: c.casino_user_id,
-                    user_id: { [Op.in]: userIds } // filter by user_id in discord verified userIds 
-                }
-            });
-
-            c.wager = Math.max(0, c.total_wager - (c.casino_user?.curr_wager_checkpoint ?? c.total_wager));
-            c.wagerPerPoint = await getSettingsNum('wagerPerPoint');
-            c.points = c.wager / c.wagerPerPoint;
-            c.user_id = c.casino_user?.user_id;
-            c.user = await getUserById(c.casino_user?.user_id ?? null);
-
-            if (casinoData.total[c.user_id]) {
-                casinoData.total[c.user_id].wager += c.wager;
-                casinoData.total[c.user_id].points += c.points;
-                casinoData.total[c.user_id].total_wager += c.total_wager;
+    const users_records = await users.findAll({where:{id:{[Op.in]:userIds}}})
+    const pointsPerWager=await getSettingsNum('wagerPerPoint');
+    for await (let casino_id of Object.keys(casinos)) {
+        leaderboards.casinos[casino_id] = casinos[casino_id].initData;
+        let casinoUsers = await casinos[casino_id].getLeaderboard(); 
+        
+        const users_casinos_records = await users_casinos.findAll({
+            where: {
+                casino_id,
+                casino_user_id: {[Op.in]:casinoUsers.map(cu=>cu.casino_user_id)},
+                user_id: { [Op.in]: userIds } // filter by user_id in discord verified userIds 
             }
-            else if (c.user_id) casinoData.total[c.user_id] = { ...c }
+        });
+        console.log({uc_records:users_casinos_records.length, casino_id})
+        for await (let c of casinoUsers) {
+            c.casino_user = users_casinos_records.find(uc=>uc.casino_user_id==c.casino_user_id)
+            c.wager = calcWager(c.total_wager,c.casino_user?.curr_wager_checkpoint)
+            c.points = c.wager/pointsPerWager;
+            c.user_id = c.casino_user?.user_id;
+            c.user = users_records.find(u=>u.id==c.user_id);
+
+            if (leaderboards.total[c.user_id]) {
+                leaderboards.total[c.user_id].wager += c.wager;
+                leaderboards.total[c.user_id].points += c.points;
+                leaderboards.total[c.user_id].total_wager += c.total_wager;
+            }
+            else if (c.user_id) leaderboards.total[c.user_id] = { ...c }
         }
-        casinoData['casinos'][casinoId].leaderboard = casinoUsers.filter(cu => cu.casino_user != null && cu.user != null).toSorted((a, b) => b.wager - a.wager)
+        leaderboards.casinos[casino_id].leaderboard = casinoUsers.filter(cu => cu.casino_user != null && cu.user != null).toSorted((a, b) => b.wager - a.wager)
     }
-    return casinoData;
+    casinoLeaderboards = leaderboards;
 }
+getCasinoLeaderboards();
+cron.schedule('*/10 * * * * *', getCasinoLeaderboards);
+
+// const getCasinoUsers = async (casinoIds = Object.keys(casinos)) => {
+//     let casinoData = { 'casinos': {}, total: {} };
+//     const userIds = bot.verifiedMembers.map(m => m.id); // discord verified userIds 
+
+//     for await (let casinoId of casinoIds) {
+//         casinoData['casinos'][casinoId] = casinos[casinoId].initData;
+//         let casinoUsers = await casinos[casinoId].getLeaderboard(); // add discord verification
+//         console.log({ casinoUsers });
+
+//         for await (let c of casinoUsers) {
+//             c.casino_user = await users_casinos.findOne({
+//                 where: {
+//                     casino_user_id: c.casino_user_id,
+//                     user_id: { [Op.in]: userIds } // filter by user_id in discord verified userIds 
+//                 }
+//             });
+
+//             c.wager = Math.max(0, c.total_wager - (c.casino_user?.curr_wager_checkpoint ?? c.total_wager));
+//             c.wagerPerPoint = await getSettingsNum('wagerPerPoint');
+//             c.points = c.wager / c.wagerPerPoint;
+//             c.user_id = c.casino_user?.user_id;
+//             c.user = await getUserById(c.casino_user?.user_id ?? null);
+
+//             if (casinoData.total[c.user_id]) {
+//                 casinoData.total[c.user_id].wager += c.wager;
+//                 casinoData.total[c.user_id].points += c.points;
+//                 casinoData.total[c.user_id].total_wager += c.total_wager;
+//             }
+//             else if (c.user_id) casinoData.total[c.user_id] = { ...c }
+//         }
+//         casinoData['casinos'][casinoId].leaderboard = casinoUsers.filter(cu => cu.casino_user != null && cu.user != null).toSorted((a, b) => b.wager - a.wager)
+//     }
+//     return casinoData;
+// }
 app.get(ROUTES.CASINOS, async (req, res) => {
     try {
-        const casinoUsers = await getCasinoUsers();
-        console.log(casinoUsers);
-        return res.json(casinoUsers);
+        console.log(casinoLeaderboards);
+        return res.json(casinoLeaderboards);
     } catch (err) {
         return res.json({ err: err.toString() });
     }
@@ -237,9 +277,9 @@ app.delete(ROUTES.MEMBERS, async ({ body: { user_id, casino_user_id } }, res) =>
 });
 
 const resetLeaderboard = async () => {
-    const casinoData = await getCasinoUsers();
-    for await (let casinoUsers of Object.values(casinoData.casinos)) {
-        for await (let { total_wager, wager, wagerPerPoint, points, casino_user: cu, user } of casinoUsers.leaderboard) {
+    await getCasinoLeaderboards();
+    for await (let casinoData of Object.values(casinoLeaderboards.casinos)) {
+        for await (let { total_wager, wager, wagerPerPoint, points, casino_user: cu, user } of casinoData.leaderboard) {
             cu.prev_wager_checkpoint = cu.curr_wager_checkpoint ?? cu.prev_wager_checkpoint;
             cu.curr_wager_checkpoint = total_wager;
             await cu.save();
@@ -249,7 +289,9 @@ const resetLeaderboard = async () => {
     }
     const cronTimeStamp = Date.now();
     console.log({ cronTimeStamp });
-    setSettings({ cronTimeStamp }); return;
+    setSettings({ cronTimeStamp }); 
+    await getCasinoLeaderboards();
+    return;
 }
 
 app.post(ROUTES.RESET_LEADERBOARD, authenticate, async (req, res) => {
