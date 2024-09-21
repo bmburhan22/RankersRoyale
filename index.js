@@ -8,7 +8,8 @@ import cors from 'cors';
 import path from 'path';
 import {ROUTES, CLIENT_ROUTES, DISCORD_API} from './utils/routes.js';
 import bot from './utils/discordBot.js';
-import {  deleteCasinoUser, deleteShopItem, getCasinosByUserIds, getSettings, getSettingsNum, getShopItem, getShopItems, getUserById, setSettings, setShopItem, users, users_casinos } from './utils/db.js';
+import {  casinoUsers, deleteCasinoUser, deleteShopItem, getByCasinoUserId, getCasinoUser,  
+    getSettingsNum, getShopItems, setCasinoUser, setSettings, setShopItem, settingsCache, setUser,  shopItemsCache,  usersCache} from './utils/db.js';
 import { Op } from 'sequelize';
 import cron from 'node-cron';
 import casinos from './utils/casinos.js';
@@ -37,7 +38,7 @@ class ErrorCode extends Error {
 
 let task;
 const scheduleTask = async () => {
-    const { resetMode, cronExpression } = await getSettings();
+    const { resetMode, cronExpression } = settingsCache;
     const scheduled = resetMode == 'auto';
     console.log({ valid: cron.validate(cronExpression), resetMode, scheduled, cronExpression });
 
@@ -79,7 +80,7 @@ app.get(REDIRECT, async ({ query: { code } }, res) => {
         });
         const { data: { access_token } } = await axios.post(`${DISCORD_API}/oauth2/token`, params,);
         const { data: { id, username, discriminator } } = await axios.get(`${DISCORD_API}/users/@me`, { headers: { 'Authorization': `Bearer ${access_token}`, } });
-        await users.upsert({ id, username, discriminator });
+        await setUser({ id, username, discriminator });
         return res.cookie('token', jwt.sign(id, JWT_SECRET), { maxAge: 30 * 24 * 60 * 60 * 1000 }).redirect(ROUTES.HOME);
     } catch (err) {
         return res.json({ err: err.toString() });
@@ -92,26 +93,24 @@ const getCasinoLeaderboards = async () => {
     let leaderboards = { ts: new Date(Date.now()).toLocaleString(),'casinos': {}, total: {} };
     const userIds = bot.verifiedMembers.map(m => m.id); 
 
-    const users_records = await users.findAll({where:{id:{[Op.in]:userIds}}})
-    const pointsPerWager=await getSettingsNum('wagerPerPoint');
+    const wagerPerPoint=getSettingsNum('wagerPerPoint');
     for await (let casino_id of Object.keys(casinos)) {
         leaderboards.casinos[casino_id] = casinos[casino_id].initData;
-        let casinoUsers = await casinos[casino_id].getLeaderboard(); 
+        let casinoMembers = await casinos[casino_id].getLeaderboard(); 
         
-        const users_casinos_records = await users_casinos.findAll({
-            where: {
-                casino_id,
-                casino_user_id: {[Op.in]:casinoUsers.map(cu=>cu.casino_user_id)},
-                user_id: { [Op.in]: userIds } // filter by user_id in discord verified userIds 
-            }
-        });
-        console.log({uc_records:users_casinos_records.length, casino_id})
-        for await (let c of casinoUsers) {
-            c.casino_user = users_casinos_records.find(uc=>uc.casino_user_id==c.casino_user_id)
+        // const users_casinos_records = await users_casinos.findAll({
+        //     where: {
+        //         casino_id,
+        //         casino_user_id: {[Op.in]:casinoUsers.map(cu=>cu.casino_user_id)},
+        //         user_id: { [Op.in]: userIds } // filter by user_id in discord verified userIds 
+        //     }
+        // });
+        for await (let c of casinoMembers) {
+            c.casino_user =getByCasinoUserId(c.casino_user_id);//users_casinos_records.find(uc=>uc.casino_user_id==c.casino_user_id)
             c.wager = calcWager(c.total_wager,c.casino_user?.curr_wager_checkpoint)
-            c.points = c.wager/pointsPerWager;
+            c.points = c.wager/wagerPerPoint;
             c.user_id = c.casino_user?.user_id;
-            c.user = users_records.find(u=>u.id==c.user_id);
+            c.user = userIds.includes(c.user_id) ? usersCache[c.user_id]:null;
 
             if (leaderboards.total[c.user_id]) {
                 leaderboards.total[c.user_id].wager += c.wager;
@@ -120,7 +119,7 @@ const getCasinoLeaderboards = async () => {
             }
             else if (c.user_id) leaderboards.total[c.user_id] = { ...c }
         }
-        leaderboards.casinos[casino_id].leaderboard = casinoUsers.filter(cu => cu.casino_user != null && cu.user != null).toSorted((a, b) => b.wager - a.wager)
+        leaderboards.casinos[casino_id].leaderboard = casinoMembers.filter(cu => cu.casino_user != null && cu.user != null).toSorted((a, b) => b.wager - a.wager)
     }
     casinoLeaderboards = leaderboards;
 }
@@ -163,7 +162,6 @@ cron.schedule('*/10 * * * * *', getCasinoLeaderboards);
 // }
 app.get(ROUTES.CASINOS, async (req, res) => {
     try {
-        console.log(casinoLeaderboards);
         return res.json(casinoLeaderboards);
     } catch (err) {
         return res.json({ err: err.toString() });
@@ -189,7 +187,7 @@ app.post(ROUTES.CASINOS, authenticate, async ({ body: { casino_id, casino_user_i
     try {
         // const casino = await casinos.findOne({ where: { id: casino_id } });
         if (!casinos[casino_id]) return res.json({ 'msg': 'Invalid casino' });
-        const user_casino = await users_casinos.upsert({ user_id: res.locals.member.id, casino_id, casino_user_id });
+        const user_casino = await setCasinoUser({ user_id: res.locals.member.id, casino_id, casino_user_id });
         return res.json(user_casino);
     } catch (err) {
         return res.json({ err: err.toString() });
@@ -201,12 +199,12 @@ const transaction = async ({ user_id, casinoId, amount, price, balanceType }) =>
     amount = round(amount);
     price = round(price);
 
-    const user = await getUserById(user_id);
+    const user = usersCache[user_id];
     if (amount > 100) throw new ErrorCode(400, 'Redeem amount must not be more than 100');
     if (amount < 0.01) throw new ErrorCode(400, 'Redeem amount must be atleast 0.01');
     // const points = amount* await getSettingsNum('pointsPerDollar');
     if (user.total_points <= price) throw new ErrorCode(400, 'Insufficient points');
-    const { casino_user_id } = await users_casinos.findOne({ where: { user_id, casino_id: casinoId } });
+    const { casino_user_id } = getCasinoUser({ user_id, casino_id: casinoId } );
     console.log({ casino_user_id, total_points: user.total_points });
     const r = await casinos[casinoId].sendBalance(casino_user_id, amount, balanceType);
     console.log(r);
@@ -233,7 +231,7 @@ const random = (min, max) => Math.random() * (max - min) + min;
 app.post(ROUTES.BUY, authenticate, async ({ body: { item_id, balanceType, casinoId } }, res) => {
     try {
         // if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
-        const { minAmount, maxAmount, price } = await getShopItem(item_id);
+        const { minAmount, maxAmount, price } =  shopItemsCache[item_id];
         if (!(minAmount && maxAmount && price)) throw new ErrorCode(403, 'Item not found');
         const amount = random(minAmount, maxAmount);
         console.log({ item_id, price, amount, minAmount, maxAmount });
@@ -247,28 +245,25 @@ app.post(ROUTES.BUY, authenticate, async ({ body: { item_id, balanceType, casino
 
 app.get(ROUTES.MEMBERS, async (req, res) => {
     try {
-        // const userIds = (await bot.fetchVerifiedMembers()).map(m => m.id);
-        // const casino_user_ids = await getCasinosByUserIds(userIds); //get
-        const usersData = await users.findAll();
-        const casinoUsers = await users_casinos.findAll();
-        return res.json(casinoUsers.map(cu => ({ ...cu.dataValues, ...usersData.find(u => u.id == cu.user_id)?.dataValues })));
+        // const casinoUsers = await users_casinos.findAll();
+        return res.json(casinoUsers().map(cu => ({ ...cu.dataValues, ...usersCache[cu.user_id]?.dataValues })));
     } catch (err) {
         return res.json({ err: err.toString() });
     }
 });
 app.post(ROUTES.MEMBERS, async ({ body: { user_id, total_points, casino_id, casino_user_id, curr_wager_checkpoint, prev_wager_checkpoint } }, res) => {
     try {
-        const [casinoUser] = await users_casinos.upsert({ user_id, casino_user_id, casino_id, curr_wager_checkpoint, prev_wager_checkpoint }, { updateOnDuplicate: ['user_id', 'casino_id'] });
-        const [usersData] = await users.upsert({ id: user_id, total_points }, { updateOnDuplicate: ['id'] });
+        const [casinoUser] = await setCasinoUser({ user_id, casino_user_id, casino_id, curr_wager_checkpoint, prev_wager_checkpoint });
+        const [usersData] = await setUser({id:  user_id, total_points });
         return res.json({ ...casinoUser.dataValues, ...usersData.dataValues });
 
     } catch (err) {
         return res.json({ err: err.toString() });
     }
 });
-app.delete(ROUTES.MEMBERS, async ({ body: { user_id, casino_user_id } }, res) => {
+app.delete(ROUTES.MEMBERS, async ({ body: { user_id, casino_id } }, res) => {
     try {
-        const r = deleteCasinoUser({ user_id, casino_user_id });
+        const r = await deleteCasinoUser({ user_id, casino_id });
         return res.json(r);
 
     } catch (err) {
@@ -357,8 +352,8 @@ app.delete(ROUTES.SHOP, authenticate, async (req, res) => {
 });
 app.get(ROUTES.SHOP,  async (req, res) => {
     try {
-        const items = await getShopItems();
-        return res.json({ message: 'fetched shop items', items, casinoWallets: Object.keys(casinos).filter(casinoId => casinos[casinoId].sendBalance != null) });
+        const items = getShopItems();
+        return res.json({ message: 'fetched shop items', items:items.map(i=>i.dataValues), casinoWallets: Object.keys(casinos).filter(casinoId => casinos[casinoId].sendBalance != null) });
 
     } catch (err) {
         return res.json({ err: err.toString() });
@@ -366,13 +361,8 @@ app.get(ROUTES.SHOP,  async (req, res) => {
 });
 app.get(ROUTES.LOGIN, async (req, res) => res.redirect(DISCORD_OAUTH2_URL));
 
-let viteHTML = fs.readFileSync(path.join(VITE_PATH, 'index.html'));
 const getHTML = async (req,res) => {
 return     res.sendFile(path.join(VITE_PATH, 'index.html'));
-    // const casinoData = await getCasinoUsers();
-    // const $ = cheerio.load(viteHTML);
-    // $('body').append(`<script id="initData">${JSON.stringify(casinoData)}</script>`)
-    // return res.send($.html());
 }
 
 app.get(CLIENT_ROUTES, getHTML);
