@@ -1,4 +1,4 @@
-import { Sequelize, Op, STRING, INTEGER, DECIMAL } from "sequelize";
+import { Sequelize, STRING, INTEGER, DECIMAL } from "sequelize";
 import dotenv from 'dotenv';
 dotenv.config();
 const { DB_URL } = process.env;
@@ -14,17 +14,16 @@ const shop_items = sq.define('shop_items',
     , { freezeTableName: true, timestamps: false }
 );
 const users = sq.define('users',
-    {
-        id: { primaryKey: true, type: STRING }
-        , username: { type: STRING }, discriminator: { type: STRING }, total_points: { type: DECIMAL(1000, 2), defaultValue: 0 }
-    }
-    , { freezeTableName: true, timestamps: false });
+    {id: { primaryKey: true, type: STRING }, username: { type: STRING }, discriminator: { type: STRING }, total_points: { type: DECIMAL(1000, 2), defaultValue: 0 }}
+    , { freezeTableName: true, timestamps: false }
+);
 const users_casinos = sq.define('users_casinos',
     {
         user_id: { primaryKey: true, type: STRING, allowNull: false }, casino_id: { type: STRING, primaryKey: true, allowNull: false }, casino_user_id: { type: STRING },
         prev_wager_checkpoint: { type: DECIMAL(1000, 2) }, curr_wager_checkpoint: { type: DECIMAL(1000, 2) }
     }
-    , { freezeTableName: true, timestamps: false });
+    , { freezeTableName: true, timestamps: false }
+);
 // ==============USERSCASINOS================
     const usersCasinosCache = {};
 const usersCasinosKey = ({ casino_id, user_id }) => `${casino_id}-${user_id}`;
@@ -36,26 +35,21 @@ export const casinoUsers = () => Object.values(usersCasinosCache);
 export const getCasinoUser = (rec) => usersCasinosCache[usersCasinosKey(rec)]
 const setUsersCasinosCache = (uc) => {  usersCasinosCache[usersCasinosKey(uc)] = uc;console.log('updated user casino');};
 const bulkSetUsersCasinosCache = (records) => records.forEach(setUsersCasinosCache)
-users_casinos.addHook('afterCreate', setUsersCasinosCache);
-users_casinos.addHook('afterUpdate', setUsersCasinosCache);
-users_casinos.addHook('afterSave', setUsersCasinosCache);
-users_casinos.addHook('afterUpsert', ([uc])=>setUsersCasinosCache(uc));
-users_casinos.afterDestroy((rec) => {
-    console.log('deleting'); 
-    delete usersCasinosCache[usersCasinosKey(rec)]})
 export const deleteCasinoUser = async ({ user_id, casino_id }) => {
     return await users_casinos.destroy({ where: { user_id, casino_id } ,individualHooks:true});
 }
+users_casinos.addHook('afterSave', setUsersCasinosCache);
+users_casinos.addHook('afterUpsert', ([uc])=>setUsersCasinosCache(uc));
+users_casinos.addHook('afterDestroy',(rec) => {
+    console.log('deleting'); 
+    delete usersCasinosCache[usersCasinosKey(rec)]})
 // =============USERS=================
 export const usersCache = {};
 export const setUser =async ({ id, total_points, username, discriminator }) =>await users.upsert({ id, total_points, username, discriminator  }, { updateOnDuplicate: ['total_points', 'username', 'discriminator'],returning:true });
 const setUsersCache = (user) => { usersCache[user.id] = user;console.log('updated user');  };
 const bulkSetUsersCache = (records) => records.forEach(setUsersCache)
-users.addHook('afterCreate', setUsersCache);
-users.addHook('afterUpdate', setUsersCache);
 users.addHook('afterUpsert',([user])=> setUsersCache(user));
 users.addHook('afterSave', setUsersCache);
-users.addHook('afterDestroy', ({id}) => delete usersCache[id]);
 
 // =======SETTINGS=========
 
@@ -70,14 +64,9 @@ export const setSettings = async (settingsObj) => {
     );
 }
 
-const setSettingsCache = (s) => { settingsCache[s.key] = s.value;console.log('updated setting');  };
+const setSettingsCache = (s) => {  settingsCache[s.key] = s.value;console.log('updated setting');  };
 const bulkSetSettingsCache = (records) => records.forEach(setSettingsCache)
 settings.addHook('afterBulkCreate', bulkSetSettingsCache);
-settings.addHook('afterCreate', setSettingsCache);
-settings.addHook('afterUpdate', setSettingsCache);
-settings.addHook('afterUpsert',([s])=> setSettingsCache(s));
-settings.addHook('afterSave', setSettingsCache);
-settings.addHook('afterDestroy', ({key}) => delete settingsCache[key]);
 export const getSettingsNum = (key) => parseFloat(settingsCache[key]);
 
 
@@ -85,30 +74,21 @@ export const getSettingsNum = (key) => parseFloat(settingsCache[key]);
 const parse = ({ minAmount, maxAmount, price, ...record }) => ({ ...record, minAmount: parseFloat(minAmount), maxAmount: parseFloat(maxAmount), price: parseFloat(price) })
 
 export const shopItemsCache = {};
-export const setShopItem = async (item) => {
-
-    return await shop_items.upsert(item);
-}
-
-
-export const deleteShopItem = async (item_id) => {
-    return await shop_items.destroy({ where: { item_id } ,individualHooks:true});
-}
-
+export const setShopItem = async (item) => {    return await shop_items.upsert(item);}
+export const deleteShopItem = async (item_id) => {    return await shop_items.destroy({ where: { item_id } ,individualHooks:true});}
 const setShopItemsCache = (item) => { shopItemsCache[item.item_id] = parse(item);
     console.log('updated shop item');  };
 const bulkSetShopItemsCache = (records) => records.forEach(setShopItemsCache)
-shop_items.addHook('afterCreate', setShopItemsCache);
-shop_items.addHook('afterUpdate', setShopItemsCache);
 shop_items.addHook('afterUpsert',([item])=> setShopItemsCache(item));
-shop_items.addHook('afterSave', setShopItemsCache);
+
 shop_items.addHook('afterDestroy', ({item_id}) => delete shopItemsCache[item_id]);
 export const getShopItems =()=> Object.values(shopItemsCache)
 // =============SYNC=================
 
 sq.sync({ alter: true }).then(async () => {
-    await setSettings({ wagerPerPoint: 5, pointsPerDollar: 100 });
+    settings.findAll().then(bulkSetSettingsCache);
     users_casinos.findAll().then(bulkSetUsersCasinosCache)
     users.findAll().then(bulkSetUsersCache)
     shop_items.findAll().then(bulkSetShopItemsCache)
+    setSettings({ wagerPerPoint: 5, pointsPerDollar: 100 });
 }).catch((err) => { console.error(err); });
