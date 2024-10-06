@@ -6,7 +6,7 @@ const { API_KEY_500, API_KEY_RAZED, API_KEY_RAZED_REF, } = process.env;
 
 export const casinos = {
     '500casino': await (new class _500casino {
-        init = async () => await axios.get('https://500.casino/api/boot', { headers: { 'x-500-auth': API_KEY_500 } })
+        init = async () => await axios.get('https://500.casino/api/boot', { headers: { 'x-500-auth': API_KEY_500 } }).then(res=>{console.log(res.statusText, res.data);return res;})
             .then(async ({ data: { userData: { referralCode }, siteSettings, balances: { crypto: currencies } } }) => {
                 const { rate, inverseRate } = siteSettings.currencyRates.bux.usd;
                 const referralLink = "https://500.casino/r/" + referralCode

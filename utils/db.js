@@ -1,4 +1,4 @@
-import pg from 'pg';
+import 'pg';
 import { Sequelize, STRING, INTEGER, DECIMAL } from "sequelize";
 import dotenv from 'dotenv';
 dotenv.config();
