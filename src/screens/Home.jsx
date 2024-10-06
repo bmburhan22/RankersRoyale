@@ -1,5 +1,5 @@
 import React from 'react';
-import Navbar from '../components/Navbar';
+import Navbar from '../components/Navbar.jsx';
 import { Box, CssBaseline } from '@mui/material';
 import { Link, useLocation } from 'react-router-dom';
 import {ROUTES} from '../../utils/routes';
