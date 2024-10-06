@@ -305,5 +305,5 @@ app.get(ROUTES.LOGIN, async (req, res) => res.redirect(DISCORD_OAUTH2_URL));
 app.get(CLIENT_ROUTES, async (req, res) =>res.sendFile(path.join(VITE_PATH, 'index.html')));
 app.get('*', (req, res) => res.redirect(ROUTES.HOME));
 
-const { port } = app.listen(PORT).address();
-console.info(`\n\nRunning on\nhttp://localhost:${port}`);
+app.listen(PORT);
+console.info('Server Running');
