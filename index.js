@@ -60,7 +60,7 @@ const { redirect_uri, client_id } = Object.fromEntries(new URL(DISCORD_OAUTH2_UR
 const REDIRECT = new URL(redirect_uri).pathname;
 app.get(REDIRECT, async ({ query: { code } }, res) => {
     try {
-        if (!code) throw ErrorCode(500, 'No auth code found');
+        if (!code) throw new ErrorCode(500, 'No auth code found');
         const params = new URLSearchParams({
             client_id, redirect_uri, code, client_secret: DISCORD_CLIENT_SECRET, grant_type: 'authorization_code',
         });
