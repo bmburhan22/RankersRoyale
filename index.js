@@ -153,7 +153,7 @@ const transaction = async ({ user_id, casinoId, amount, price, balanceType }) =>
 
 app.post(ROUTES.REDEEM, authenticate, async (req, res) => {
     try {
-        if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
+        // if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
         const price = parseFloat(req.body.amount) * getSettingsNum('pointsPerDollar');
         const r = await transaction({ ...req.body, price, user_id: res.locals.member.id, });
         return res.json(r);
