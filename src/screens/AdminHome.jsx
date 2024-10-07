@@ -6,7 +6,7 @@ import {ROUTES} from '../../utils/routes';
 import { useAuth } from '../utils/auth';
 import { Button } from 'react-bootstrap';
 import { DataGrid, GridActionsCellItem, GridColDef, GridDeleteIcon } from '@mui/x-data-grid';
-const nextNumber= numbers=>1 + numbers.fold(0,(a, b) => (a > b ? a : b)) 
+const nextNumber= numbers=>1 + numbers?.reduce((a, b) => (a > b ? a : b))||0 
 const AdminHome = () => {
   const [items, setItems] = useState([]);
   const [members, setMembers] = useState([]);
