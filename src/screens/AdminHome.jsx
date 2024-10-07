@@ -1,49 +1,49 @@
 import React, { useEffect, useState } from 'react';
-// import Navbar from '../components/Navbar';
-// import { Box, CssBaseline, Icon, MenuItem, Select, TextField } from '@mui/material';
-// import { Link, useLocation } from 'react-router-dom';
-// import {ROUTES} from '../../utils/routes';
-// import { useAuth } from '../utils/auth';
-// import { Button } from 'react-bootstrap';
-// import { DataGrid, GridActionsCellItem, GridColDef, GridDeleteIcon } from '@mui/x-data-grid';
-// const nextNumber= numbers=>1 + numbers.fold(0,(a, b) => (a > b ? a : b)) 
+import Navbar from '../components/Navbar';
+import { Box, CssBaseline, Icon, MenuItem, Select, TextField } from '@mui/material';
+import { Link, useLocation } from 'react-router-dom';
+import {ROUTES} from '../../utils/routes';
+import { useAuth } from '../utils/auth';
+import { Button } from 'react-bootstrap';
+import { DataGrid, GridActionsCellItem, GridColDef, GridDeleteIcon } from '@mui/x-data-grid';
+const nextNumber= numbers=>1 + numbers.fold(0,(a, b) => (a > b ? a : b)) 
 const AdminHome = () => {
-  // const [items, setItems] = useState([]);
-  // const [members, setMembers] = useState([]);
-  // const { isAdmin, get, post ,del} = useAuth();
-  // const [settingsObj, setSettingsObj] = useState({});
-  // const getShopItems = async () => await get(ROUTES.SHOP).then(r => setItems(r.data.items));
-  // const setShopItem = async (item) => await post(ROUTES.SHOP, item).then(getShopItems)
-  // const updateMember = async (targetRec) => await post(ROUTES.MEMBERS, targetRec).then(getMembers);
-  // const deleteMember = async (targetRec) => await del(ROUTES.MEMBERS, targetRec).then(getMembers);
-  // const resetLeaderboard = async () => await post(ROUTES.RESET_LEADERBOARD).then(getMembers);
-  // const getMembers = async () => {
-  //   return await get(ROUTES.MEMBERS).then(m => {
-  //     console.log(m);
-  //     ;return setMembers(m.data);
-  //   });
-  // }
+  const [items, setItems] = useState([]);
+  const [members, setMembers] = useState([]);
+  const { isAdmin, get, post ,del} = useAuth();
+  const [settingsObj, setSettingsObj] = useState({});
+  const getShopItems = async () => await get(ROUTES.SHOP).then(r => setItems(r.data.items));
+  const setShopItem = async (item) => await post(ROUTES.SHOP, item).then(getShopItems)
+  const updateMember = async (targetRec) => await post(ROUTES.MEMBERS, targetRec).then(getMembers);
+  const deleteMember = async (targetRec) => await del(ROUTES.MEMBERS, targetRec).then(getMembers);
+  const resetLeaderboard = async () => await post(ROUTES.RESET_LEADERBOARD).then(getMembers);
+  const getMembers = async () => {
+    return await get(ROUTES.MEMBERS).then(m => {
+      console.log(m);
+      ;return setMembers(m.data);
+    });
+  }
 
-  // const getSettings = async () => {
-  //   await get(ROUTES.SETTINGS).then(m => {
-  //     console.log(m);
-  //     ; setSettingsObj(m.data);
-  //   });
-  // }
-  // const deleteItem=async(item_id)=>{
-  //   console.log('deleting ' ,item_id);
+  const getSettings = async () => {
+    await get(ROUTES.SETTINGS).then(m => {
+      console.log(m);
+      ; setSettingsObj(m.data);
+    });
+  }
+  const deleteItem=async(item_id)=>{
+    console.log('deleting ' ,item_id);
     
-  //  return await del(ROUTES.SHOP, {item_id});}
+   return await del(ROUTES.SHOP, {item_id});}
 
-  // const setSettings = async () => { return await post(ROUTES.SETTINGS, settingsObj); }
-  // const setCronSettings = async () => { return await post(ROUTES.CRON, settingsObj); }
-  // useEffect(
-  //   () => { getMembers(); getSettings(); getShopItems(); }
-  //   , []);
+  const setSettings = async () => { return await post(ROUTES.SETTINGS, settingsObj); }
+  const setCronSettings = async () => { return await post(ROUTES.CRON, settingsObj); }
+  useEffect(
+    () => { getMembers(); getSettings(); getShopItems(); }
+    , []);
 
   return (
-    <> <h1>ADMIN</h1>
-      {/* <div style={{marginTop:100}}>
+    <> <CssBaseline />
+      <div style={{marginTop:100}}>
       <TextField type='number' value={settingsObj.wagerPerPoint ?? ''} onChange={({ target: { value: wagerPerPoint } }) => setSettingsObj((obj) => ({ ...obj, wagerPerPoint }))} label='Wager Per Point' />
       <TextField type='number' value={settingsObj.pointsPerDollar ?? ''} onChange={({ target: { value: pointsPerDollar } }) => setSettingsObj((obj) => ({ ...obj, pointsPerDollar }))} label='Points Per Dollar' />
       <TextField value={settingsObj.cronExpression ?? ''} onChange={({ target: { value: cronExpression } }) => setSettingsObj((obj) => ({ ...obj, cronExpression}))} label='Cron Expression' />
@@ -99,7 +99,7 @@ const AdminHome = () => {
             },
         ]}
       />
-      </div> */}
+      </div>
     </>
   );
 };

@@ -3,7 +3,7 @@ export const ROUTES ={
     HOME: '/',
     CASINOS_PAGE: '/casinos',
     LOGIN: '/login',
-    ADMIN_HOME: '/admin',
+    ADMIN_HOME: '/admin-page',
     
     ME: '/api/me',
     MEMBERS: '/api/members',
