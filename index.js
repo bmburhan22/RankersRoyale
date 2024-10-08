@@ -302,7 +302,6 @@ app.get(ROUTES.SHOP, async (req, res) => {
 });
 app.get(ROUTES.LOGIN, async (req, res) => res.redirect(DISCORD_OAUTH2_URL));
 app.get(CLIENT_ROUTES, async (req, res) =>{
-    console.log(VITE_PATH, req.path)
     return res.sendFile(path.join(VITE_PATH, 'index.html'));} );
 app.get('*', (req, res) => res.redirect(ROUTES.HOME));
 
