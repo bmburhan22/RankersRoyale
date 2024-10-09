@@ -1,3 +1,4 @@
+*.pem
 *.sqlite
 .env
 start-ngrok.bat

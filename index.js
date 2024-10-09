@@ -8,12 +8,14 @@ import cors from 'cors';
 import path from 'path';
 import { ROUTES, CLIENT_ROUTES, DISCORD_API } from './utils/routes.js';
 import bot from './utils/discordBot.js';
+import https from 'https';
 import {
     casinoUsers, deleteCasinoUser, deleteShopItem, getByCasinoUserId, getCasinoUser,
     getSettingsNum, getShopItems, setCasinoUser, setSettings, setShopItem, settingsCache, setUser, shopItemsCache, usersCache
 } from './utils/db.js';
 import cron from 'node-cron';
 import {casinos, refreshLeaderboardData} from './utils/casinos.js';
+import { readFileSync } from 'fs';
 dotenv.config();
 const { PORT, JWT_SECRET, DISCORD_ADMIN_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET } = process.env;
 
@@ -305,5 +307,5 @@ app.get(CLIENT_ROUTES, async (req, res) =>{
     return res.sendFile(path.join(VITE_PATH, 'index.html'));} );
 app.get('*', (req, res) => res.redirect(ROUTES.HOME));
 
-app.listen(PORT);
-console.info('Server Running');
+const server = https.createServer({key:readFileSync('./key.pem'),cert:readFileSync('./cert.pem')}, app)
+server.listen(PORT);
