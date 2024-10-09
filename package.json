@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start": "vite build && node ./index",
-    "test": "vite build && nodemon server",
+    "start": "npm run build && node ./index",
+    "test": "npm run build && nodemon server",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",

@@ -2,11 +2,17 @@ FROM node:alpine
 
 WORKDIR /app
 
-COPY docker-package.json package.json
-COPY index.js index.js
-COPY utils/ utils/
-COPY dist dist
+COPY package*.json .
+COPY src ./src
+COPY utils ./utils
+COPY index.html .
+COPY index.js .
+COPY vite.config.js .
+
+
 RUN npm i
+
+
 
 EXPOSE 3000
 CMD ["npm","start"]

@@ -24,6 +24,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    working_dir: /app
+    volumes:
+      - ./certs:/app/certs:ro
 
 volumes:
   pg-data:

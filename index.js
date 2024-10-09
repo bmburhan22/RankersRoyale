@@ -307,5 +307,5 @@ app.get(CLIENT_ROUTES, async (req, res) =>{
     return res.sendFile(path.join(VITE_PATH, 'index.html'));} );
 app.get('*', (req, res) => res.redirect(ROUTES.HOME));
 
-const server = https.createServer({key:readFileSync('./key.pem'),cert:readFileSync('./cert.pem')}, app)
+const server = https.createServer({key:readFileSync('./certs/key.pem'),cert:readFileSync('./certs/cert.pem')}, app)
 server.listen(PORT);

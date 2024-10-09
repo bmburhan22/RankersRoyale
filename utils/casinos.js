@@ -7,23 +7,24 @@ const { API_KEY_500, API_KEY_RAZED, API_KEY_RAZED_REF, } = process.env;
 export const casinos = {
     '500casino': await (new class _500casino {
         init = async () => await axios.get('https://500.casino/api/boot', { headers: { 'x-500-auth': API_KEY_500 } })
-        .then(res=>{//console.log(res.statusText, res.data);
-            return res;})
+
             .then(async ({ data: { userData: { referralCode }, siteSettings, balances: { crypto: currencies } } }) => {
                 const { rate, inverseRate } = siteSettings.currencyRates.bux.usd;
                 const referralLink = "https://500.casino/r/" + referralCode
                 this.initData = { rate, currencies, inverseRate, referralCode, referralLink }
                 await this.getLeaderboard();
                 return this;
-            });
+            }).catch(c => this);
         getLeaderboard = async () => {
-            console.log('fetching casino data 500casino')
-            const r = await axios.post("https://500.casino/api/rewards/affiliate-users",
-                { sorting: { totalPlayed: -1 } }, { headers: { 'x-500-auth': API_KEY_500 } }
-            );
-            this.initData.ts=new Date(Date.now()).toLocaleString(),
+            try {
+                console.log('fetching casino data 500casino')
+                const r = await axios.post("https://500.casino/api/rewards/affiliate-users",
+                    { sorting: { totalPlayed: -1 } }, { headers: { 'x-500-auth': API_KEY_500 } }
+                );
+                this.initData.ts = new Date(Date.now()).toLocaleString(),
 
-            this.leaderboard = r.data.results.map(u => ({ casino_user_id: u._id, total_wager: this.initData.rate * u.totalPlayed }));
+                    this.leaderboard = r.data.results.map(u => ({ casino_user_id: u._id, total_wager: this.initData.rate * u.totalPlayed }));
+            } catch (e) { console.log(e) }
         };
         sendBalance = async (destinationUserId, value, balanceType) => {
             console.log({ value, converted: value * this.initData.inverseRate });
@@ -50,14 +51,16 @@ export const casinos = {
                 this.initData = { rate: 1, currencies: ['usd'], inverseRate: 1, referralCode, referralLink }
                 await this.getLeaderboard();
                 return this;
-            })
+            }).catch(c => this);
         getLeaderboard = async () => {
-            console.log('fetching casino data razed')
-            const r = await fetch("https://api.razed.com/player/api/v1/referrals/leaderboard?from=0001-01-01&referral_code=Razedreloads%2CChrisspinsslots%2CReloadsJP%2CReloads&to=9999-12-31&top=100",
-                { headers: { 'X-Referral-Key': API_KEY_RAZED_REF }, },
-            ).then(r => r.json());
-            this.initData.ts=new Date(Date.now()).toLocaleString(),
-            this.leaderboard = r.data.map(u => ({ casino_user_id: u.username, total_wager: this.initData.rate * u.wagered }));
+            try {
+                console.log('fetching casino data razed')
+                const r = await fetch("https://api.razed.com/player/api/v1/referrals/leaderboard?from=0001-01-01&referral_code=Razedreloads%2CChrisspinsslots%2CReloadsJP%2CReloads&to=9999-12-31&top=100",
+                    { headers: { 'X-Referral-Key': API_KEY_RAZED_REF }, },
+                ).then(r => r.json());
+                this.initData.ts = new Date(Date.now()).toLocaleString(),
+                    this.leaderboard = r.data.map(u => ({ casino_user_id: u.username, total_wager: this.initData.rate * u.wagered }));
+            } catch (e) { console.log(e) }
         };
 
         sendBalance = async (receiver_username, amount, balanceType) => {
@@ -70,7 +73,7 @@ export const casinos = {
 
                 },
             )
-                .then(async r => {  return await r.json() })
+                .then(async r => { return await r.json() })
                 .catch(err => { console.log(err); return { ...err, success: false } })
 
                 ;
@@ -78,7 +81,7 @@ export const casinos = {
     }().init())
 }
 export const refreshLeaderboardData = async () => {
-    console.log('refreshing leaderboard data', new Date(Date.now()).toLocaleString(), )
+    console.log('refreshing leaderboard data', new Date(Date.now()).toLocaleString(),)
     for await (const casino of Object.values(casinos)) {
         await casino.getLeaderboard();
     }
