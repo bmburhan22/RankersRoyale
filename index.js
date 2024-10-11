@@ -80,7 +80,7 @@ const getCasinoLeaderboards = () => {
     const userIds = bot.verifiedMembers.map(m => m.id);
     const wagerPerPoint = getSettingsNum('wagerPerPoint');
     for  (let casino_id of Object.keys(casinos)) {
-        leaderboards.casinos[casino_id] = casinos[casino_id].initData;
+        leaderboards.casinos[casino_id] = casinos[casino_id].data;
         let casinoMembers = casinos[casino_id].leaderboard;
         for (let c of casinoMembers) {
             c.casino_user = getByCasinoUserId(c.casino_user_id);
