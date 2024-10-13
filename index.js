@@ -14,7 +14,7 @@ import {
     getSettingsNum, getShopItems, setCasinoUser, setSettings, setShopItem, settingsCache, setUser, shopItemsCache, usersCache
 } from './utils/db.js';
 import cron from 'node-cron';
-import {casinos, refreshLeaderboardData} from './utils/casinos.js';
+import { casinos, refreshLeaderboardData } from './utils/casinos.js';
 import { readFileSync } from 'fs';
 dotenv.config();
 const { PORT, JWT_SECRET, DISCORD_ADMIN_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET } = process.env;
@@ -75,11 +75,11 @@ app.get(REDIRECT, async ({ query: { code } }, res) => {
     }
 });
 const calcWager = (total_wager, wager_checkpoint) => Math.max(0, total_wager - (wager_checkpoint ?? total_wager))
-const getCasinoLeaderboards = () => {
+const getCasinoLeaderboards = (casinoIds = Object.keys(casinos)) => {
     let leaderboards = { 'casinos': {}, total: {} };
     const userIds = bot.verifiedMembers.map(m => m.id);
     const wagerPerPoint = getSettingsNum('wagerPerPoint');
-    for  (let casino_id of Object.keys(casinos)) {
+    for (let casino_id of casinoIds) {
         leaderboards.casinos[casino_id] = casinos[casino_id].data;
         let casinoMembers = casinos[casino_id].leaderboard;
         for (let c of casinoMembers) {
@@ -88,20 +88,23 @@ const getCasinoLeaderboards = () => {
             c.points = c.wager / wagerPerPoint;
             c.user_id = c.casino_user?.user_id;
             c.user = userIds.includes(c.user_id) ? usersCache[c.user_id] : null;
-
-            if (leaderboards.total[c.user_id]) {
-                leaderboards.total[c.user_id].wager += c.wager;
-                leaderboards.total[c.user_id].points += c.points;
-                leaderboards.total[c.user_id].total_wager += c.total_wager;
+            if (casinoIds.length > 1) {
+                if (leaderboards.total[c.user_id]) {
+                    leaderboards.total[c.user_id].wager += c.wager;
+                    leaderboards.total[c.user_id].points += c.points;
+                    leaderboards.total[c.user_id].total_wager += c.total_wager;
+                }
+                else if (c.user_id) leaderboards.total[c.user_id] = { ...c }
             }
-            else if (c.user_id) leaderboards.total[c.user_id] = { ...c }
         }
         leaderboards.casinos[casino_id].leaderboard = casinoMembers.filter(cu => cu.casino_user != null && cu.user != null).toSorted((a, b) => b.wager - a.wager)
     }
     return leaderboards;
 }
-app.get(ROUTES.CASINOS, async (req, res) => {
+app.get(ROUTES.CASINOS, async ({ query: { casino_id } }, res) => {
     try {
+        if (Object.keys(casinos).includes(casino_id))
+            return res.json(getCasinoLeaderboards([casino_id]));
         return res.json(getCasinoLeaderboards());
     } catch (err) {
         return res.json({ err: err.toString() });
@@ -169,7 +172,7 @@ const random = (min, max) => Math.random() * (max - min) + min;
 app.post(ROUTES.BUY, authenticate, async ({ body: { item_id, balanceType, casinoId } }, res) => {
     try {
         const { minAmount, maxAmount, price } = shopItemsCache[item_id];
-        if (!(minAmount && maxAmount && price) || minAmount>maxAmount) throw new ErrorCode(403, 'Item not found');
+        if (!(minAmount && maxAmount && price) || minAmount > maxAmount) throw new ErrorCode(403, 'Item not found');
         const amount = random(minAmount, maxAmount);
         console.log({ item_id, price, amount, minAmount, maxAmount });
 
@@ -292,20 +295,22 @@ app.delete(ROUTES.SHOP, authenticate, async (req, res) => {
 app.get(ROUTES.SHOP, async (req, res) => {
     try {
         const items = getShopItems();
-        return res.json({ message: 'fetched shop items', items: items.map(i => i.dataValues), 
+        return res.json({
+            message: 'fetched shop items', items: items.map(i => i.dataValues),
             casinoWallets: Object.keys(casinos).filter(casinoId => casinos[casinoId].sendBalance != null
-                && casinos[casinoId].leaderboard.some(({casino_user_id})=>getByCasinoUserId(casino_user_id)!=null ) // dont show wallet for user's not using ref code
+                && casinos[casinoId].leaderboard.some(({ casino_user_id }) => getByCasinoUserId(casino_user_id) != null) // dont show wallet for user's not using ref code
             )
-         });
+        });
 
     } catch (err) {
         return res.json({ err: err.toString() });
     }
 });
 app.get(ROUTES.LOGIN, async (req, res) => res.redirect(DISCORD_OAUTH2_URL));
-app.get(CLIENT_ROUTES, async (req, res) =>{
-    return res.sendFile(path.join(VITE_PATH, 'index.html'));} );
+app.get(CLIENT_ROUTES, async (req, res) => {
+    return res.sendFile(path.join(VITE_PATH, 'index.html'));
+});
 app.get('*', (req, res) => res.redirect(ROUTES.HOME));
 
-const server = https.createServer({key:readFileSync('./certs/key.pem'),cert:readFileSync('./certs/cert.pem')}, app)
+const server = https.createServer({ key: readFileSync('./certs/key.pem'), cert: readFileSync('./certs/cert.pem') }, app)
 server.listen(PORT);

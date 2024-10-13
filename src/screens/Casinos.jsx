@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useLayoutEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../utils/auth';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {ROUTES} from '../../utils/routes';
 import { CssBaseline, Box, TextField, Button, Divider, Select, MenuItem, InputLabel } from '@mui/material';
 
@@ -9,10 +9,10 @@ import { Row, } from 'react-bootstrap';
 import { DataGrid, GridActionsCellItem, GridAddIcon } from '@mui/x-data-grid';
 
 const Casinos = () => {
-  const CASINO_OBJ = { bet1: null, '500casino': null };
-
+  const {casino_id}= useParams();
+  console.log(casino_id);
   const { post, get } = useAuth();
-  const [inputData, setInputData] = useState(CASINO_OBJ);
+  const [inputData, setInputData] = useState();
   const [leaderBoard, setLeaderboard] = useState({ total: {}, casinos: {} });
   const [amount, setAmount] = useState(0);
   const [balanceType, setBalanceType] = useState('usdt');
