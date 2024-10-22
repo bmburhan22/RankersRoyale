@@ -10,8 +10,13 @@ import { ROUTES, CLIENT_ROUTES, DISCORD_API } from './utils/routes.js';
 import bot from './utils/discordBot.js';
 import https from 'https';
 import {
-    casinoUsers, deleteCasinoUser, deleteShopItem, getByCasinoUserId, getCasinoUser,
-    getSettingsNum, getShopItems, setCasinoUser, setSettings, setShopItem, settingsCache, setUser, shopItemsCache, usersCache
+    casinoUsers, deleteCasinoUser,
+    getByCasinoUserId, getCasinoUser,
+    getSettingsNum, setCasinoUser, setSettings,
+    // getShopItems, deleteShopItem, setShopItem,shopItemsCache,
+    settingsCache, setUser, usersCache,
+    withdrawals,
+    withdrawalsCache
 } from './utils/db.js';
 import cron from 'node-cron';
 import { casinos, refreshLeaderboardData } from './utils/casinos.js';
@@ -74,33 +79,59 @@ app.get(REDIRECT, async ({ query: { code } }, res) => {
         return res.json({ err: err.toString() });
     }
 });
-const calcWager = (total_wager, wager_checkpoint) => Math.max(0, total_wager - (wager_checkpoint ?? total_wager))
+const calcRevenue = (total, checkpoint) => Math.max(0, total - (checkpoint ?? total))
 const getCasinoLeaderboards = (casinoIds = Object.keys(casinos)) => {
     let leaderboards = { 'casinos': {}, total: {} };
     const userIds = bot.verifiedMembers.map(m => m.id);
-    const wagerPerPoint = getSettingsNum('wagerPerPoint');
     for (let casino_id of casinoIds) {
         leaderboards.casinos[casino_id] = casinos[casino_id].data;
         let casinoMembers = casinos[casino_id].leaderboard;
         for (let c of casinoMembers) {
             c.casino_user = getByCasinoUserId(c.casino_user_id);
-            c.wager = calcWager(c.total_wager, c.casino_user?.curr_wager_checkpoint)
-            c.points = c.wager / wagerPerPoint;
+            c.revenue = calcRevenue(c.total_revenue, c.casino_user?.curr_revenue_checkpoint)
+            c.reward = c.revenue * 0.1;
             c.user_id = c.casino_user?.user_id;
             c.user = userIds.includes(c.user_id) ? usersCache[c.user_id] : null;
             if (casinoIds.length > 1) {
                 if (leaderboards.total[c.user_id]) {
-                    leaderboards.total[c.user_id].wager += c.wager;
-                    leaderboards.total[c.user_id].points += c.points;
-                    leaderboards.total[c.user_id].total_wager += c.total_wager;
+                    leaderboards.total[c.user_id].revenue += c.revenue;
+                    leaderboards.total[c.user_id].reward += c.reward;
                 }
                 else if (c.user_id) leaderboards.total[c.user_id] = { ...c }
             }
         }
-        leaderboards.casinos[casino_id].leaderboard = casinoMembers.filter(cu => cu.casino_user != null && cu.user != null).toSorted((a, b) => b.wager - a.wager)
+        leaderboards.casinos[casino_id].leaderboard = casinoMembers.filter(cu => cu.casino_user != null && cu.user != null).toSorted((a, b) => b.revenue - a.revenue)
     }
     return leaderboards;
 }
+// const calcRevenue = (total, checkpoint) => Math.max(0, total - (checkpoint ?? total))
+// const getCasinoLeaderboards = (casinoIds = Object.keys(casinos)) => {
+//     let leaderboards = { 'casinos': {}, total: {} };
+//     const userIds = bot.verifiedMembers.map(m => m.id);
+//     const wagerPerPoint = getSettingsNum('wagerPerPoint');
+//     for (let casino_id of casinoIds) {
+//         leaderboards.casinos[casino_id] = casinos[casino_id].data;
+//         let casinoMembers = casinos[casino_id].leaderboard;
+//         for (let c of casinoMembers) {
+//             c.casino_user = getByCasinoUserId(c.casino_user_id);
+//             // c.wager = calcRevenue(c.total_wager, c.casino_user?.curr_wager_checkpoint)
+//             c.revenue = calcRevenue(c.total_revenue, c.casino_user?.curr_revenue_checkpoint)
+//             // c.points = c.wager / wagerPerPoint;
+//             c.user_id = c.casino_user?.user_id;
+//             c.user = userIds.includes(c.user_id) ? usersCache[c.user_id] : null;
+//             if (casinoIds.length > 1) {
+//                 if (leaderboards.total[c.user_id]) {
+//                     leaderboards.total[c.user_id].wager += c.wager;
+//                     leaderboards.total[c.user_id].points += c.points;
+//                     leaderboards.total[c.user_id].total_wager += c.total_wager;
+//                 }
+//                 else if (c.user_id) leaderboards.total[c.user_id] = { ...c }
+//             }
+//         }
+//         leaderboards.casinos[casino_id].leaderboard = casinoMembers.filter(cu => cu.casino_user != null && cu.user != null).toSorted((a, b) => b.wager - a.wager)
+//     }
+//     return leaderboards;
+// }
 app.get(ROUTES.CASINOS, async ({ query: { casino_id } }, res) => {
     try {
         if (Object.keys(casinos).includes(casino_id))
@@ -136,6 +167,77 @@ app.post(ROUTES.CASINOS, authenticate, async ({ body: { casino_id, casino_user_i
     }
 });
 const round = val => Math.floor(parseFloat(val) * 100) / 100;
+const transaction = async ({ user_id, casinoId, amount, balance_type }) => {
+    console.log({ amount, rounded: round(amount) });
+    amount = round(amount);
+
+    const user = usersCache[user_id];
+    if (amount > 100) throw new ErrorCode(400, 'Redeem amount must not be more than 100');
+    if (amount < 0.01) throw new ErrorCode(400, 'Redeem amount must be atleast 0.01');
+    if (user.total_reward < amount) throw new ErrorCode(400, 'Insufficient funds');
+    const { casino_user_id } = getCasinoUser({ user_id, casino_id: casinoId });
+    console.log({ casino_user_id, total_reward: user.total_reward });
+    const w = withdrawals.create({ casino_id: casinoId, casino_user_id, user_id, amount, balance: user.total_reward - amount,balance_type });
+    if (w) {
+        user.decrement({total_reward: amount});
+        await user.save();
+    }
+    return w;
+}
+
+const handleWithdrawal = async (w, approve) => {
+    const amount = parseFloat(w.amount);
+    if (approve)
+        {
+            const {success} = await casinos[w.casino_id].sendBalance(w.casino_user_id, amount, w.balance_type);
+            approve=success
+        }
+    if (!approve) {
+        const u = usersCache[w.user_id];
+        u.increment({total_reward:amount});
+        await u.save();
+    }
+
+    w.status = approve == null ? 'pending' : approve ? 'approved' : 'rejected';
+    return await w.save();
+}
+app.get(ROUTES.WITHDRAWALS, authenticate, async (req, res) => {
+    try {
+        if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
+        return res.json(withdrawalsCache);
+    } catch (err) {
+        return res.json({ code: err.code, err: err.toString() });
+    }
+});
+app.post(ROUTES.WITHDRAWALS, authenticate, async ({ body: { wid, approve } }, res) => {
+    try {
+        if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
+        if (!withdrawalsCache[wid]) throw new ErrorCode(400, 'Transaction not found');
+        if (['approved','rejected'].includes(withdrawalsCache[wid]?.status) ) throw new ErrorCode(400, 'Transaction found to be '+withdrawalsCache[wid]?.status);
+        if (approve == null) throw new ErrorCode(400, 'Specify approval true/false');
+        return res.json(handleWithdrawal(withdrawalsCache[wid], approve));
+    } catch (err) {
+        return res.json({ code: err.code, err: err.toString() });
+    }
+});
+app.post(ROUTES.CLAIM_REWARD, authenticate, async (req, res) => {
+    try {
+        // if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
+        const r = await transaction({ ...req.body, user_id: res.locals.member.id, });
+        return res.json(r);
+    } catch (err) {
+        return res.json({ code: err.code, err: err.toString() });
+    }
+});
+app.get(ROUTES.CLAIM_REWARD, authenticate, async (req, res) => {
+    try {
+        // if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
+        return res.json({ total_reward: usersCache[res.locals.member.id].total_reward });
+    } catch (err) {
+        return res.json({ code: err.code, err: err.toString() });
+    }
+});
+/*
 const transaction = async ({ user_id, casinoId, amount, price, balanceType }) => {
     console.log({ amount, price, rounded: round(amount) });
     amount = round(amount);
@@ -167,8 +269,8 @@ app.post(ROUTES.REDEEM, authenticate, async (req, res) => {
             .json({ code: err.code, err: err.toString() });
     }
 });
-const random = (min, max) => Math.random() * (max - min) + min;
 
+const random = (min, max) => Math.random() * (max - min) + min;
 app.post(ROUTES.BUY, authenticate, async ({ body: { item_id, balanceType, casinoId } }, res) => {
     try {
         const { minAmount, maxAmount, price } = shopItemsCache[item_id];
@@ -182,6 +284,7 @@ app.post(ROUTES.BUY, authenticate, async ({ body: { item_id, balanceType, casino
         return res.json({ code: err.code, err: err.toString() });
     }
 });
+*/
 
 app.get(ROUTES.MEMBERS, async (req, res) => {
     try {
@@ -190,10 +293,14 @@ app.get(ROUTES.MEMBERS, async (req, res) => {
         return res.json({ err: err.toString() });
     }
 });
-app.post(ROUTES.MEMBERS, async ({ body: { user_id, total_points, casino_id, casino_user_id, curr_wager_checkpoint, prev_wager_checkpoint } }, res) => {
+app.post(ROUTES.MEMBERS, async ({ body: { user_id, casino_id, casino_user_id, /*total_points,curr_wager_checkpoint, prev_wager_checkpoint*/
+    curr_revenue_checkpoint, prev_revenue_checkpoint } }, res) => {
     try {
-        const [casinoUser] = await setCasinoUser({ user_id, casino_user_id, casino_id, curr_wager_checkpoint, prev_wager_checkpoint });
-        const [usersData] = await setUser({ id: user_id, total_points });
+        const [casinoUser] = await setCasinoUser({
+            user_id, casino_user_id, casino_id,/* curr_wager_checkpoint, prev_wager_checkpoint*/
+            curr_revenue_checkpoint, prev_revenue_checkpoint,
+        });
+        const [usersData] = await setUser({ id: user_id, /*total_points*/ total_revenue });
         return res.json({ ...casinoUser.dataValues, ...usersData.dataValues });
 
     } catch (err) {
@@ -209,6 +316,47 @@ app.delete(ROUTES.MEMBERS, async ({ body: { user_id, casino_id } }, res) => {
         return res.json({ err: err.toString() });
     }
 });
+
+const refreshRevenue = async () => {
+    await refreshLeaderboardData();
+    for await (let casinoData of Object.values(getCasinoLeaderboards().casinos)) {
+        for await (let { total_revenue, revenue, reward, casino_user: cu, user } of casinoData.leaderboard) {
+            cu.prev_revenue_checkpoint = cu.curr_revenue_checkpoint ?? cu.prev_revenue_checkpoint;
+            cu.curr_revenue_checkpoint = total_revenue;
+            await cu.save();
+            console.log({ total_reward: user.total_reward, revenue, reward });
+            await user.increment({ total_reward: reward });
+        }
+    }
+    const cronTimeStamp = Date.now();
+    console.log({ cronTimeStamp });
+    setSettings({ cronTimeStamp });
+    return;
+}
+
+let task;
+const scheduleTask = async () => {
+    const { resetMode, cronExpression } = settingsCache;
+    const scheduled = resetMode == 'auto';
+    console.log({ valid: cron.validate(cronExpression), resetMode, scheduled, cronExpression });
+    task?.stop();
+    task = (!scheduled || !cron.validate(cronExpression)) ? null : cron.schedule(cronExpression, refreshRevenue, { timezone: 'ist', scheduled });
+    task?.start();
+
+}
+scheduleTask();
+
+app.post(ROUTES.REFRESH_REVENUE, authenticate, async (req, res) => {
+    try {
+        if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
+        await refreshRevenue();
+        return res.json({ message: 'Revenue refreshed' });
+    } catch (err) {
+        return res.json({ err: err.toString() });
+    }
+});
+
+/*
 const resetLeaderboard = async () => {
     await refreshLeaderboardData();
     for await (let casinoData of Object.values(getCasinoLeaderboards().casinos)) {
@@ -248,6 +396,7 @@ app.post(ROUTES.RESET_LEADERBOARD, authenticate, async (req, res) => {
         return res.status(err.code).json({ err: err.toString() });
     }
 });
+*/
 app.post(ROUTES.SETTINGS, authenticate, async ({ body: settingsObj }, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
@@ -269,7 +418,7 @@ app.get(ROUTES.SETTINGS, authenticate, async (req, res) => {
         return res.json({ err: err.toString() });
     }
 });
-
+/*
 app.post(ROUTES.SHOP, authenticate, async (req, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
@@ -306,6 +455,7 @@ app.get(ROUTES.SHOP, async (req, res) => {
         return res.json({ err: err.toString() });
     }
 });
+*/
 app.get(ROUTES.LOGIN, async (req, res) => res.redirect(DISCORD_OAUTH2_URL));
 app.get(CLIENT_ROUTES, async (req, res) => {
     return res.sendFile(path.join(VITE_PATH, 'index.html'));

@@ -24,7 +24,10 @@ export const casinos = {
                 );
                 this.data.datetime = new Date(Date.now()).toLocaleString();
 
-                    this.leaderboard = r.data.results.map(u => ({ casino_user_id: u._id, total_wager: this.data?.rate * u.totalPlayed }));
+                    this.leaderboard = r.data.results.map(u => ({ casino_user_id: u._id, 
+                        // total_wager: this.data?.rate * u.totalPlayed,
+                        total_revenue: this.data?.rate * u.totalPlayed,
+                     }));
             } catch (e) { console.log(e) }
         };
         sendBalance = async (destinationUserId, value, balanceType) => {
@@ -32,7 +35,7 @@ export const casinos = {
 
             return await axios.post('https://tradingapi.500.casino/api/v1/user/balance/send',
                 { destinationUserId, value: value * this.data.inverseRate, balanceType }, { headers: { 'x-500-auth': API_KEY_500 }, })
-                .then(r => r.data)
+                .then(r => ({success:true, ...r.data}))
                 .catch(err => { console.log(err); return { ...err.response.data, success: false } })
                 ;
         }
@@ -60,8 +63,12 @@ export const casinos = {
                 const r = await fetch("https://api.razed.com/player/api/v1/referrals/leaderboard?from=0001-01-01&referral_code=Razedreloads%2CChrisspinsslots%2CReloadsJP%2CReloads&to=9999-12-31&top=100",
                     { headers: { 'X-Referral-Key': API_KEY_RAZED_REF }, },
                 ).then(r => r.json());
+                
                 this.data.datetime = new Date(Date.now()).toLocaleString();
-                    this.leaderboard = r.data.map(u => ({ casino_user_id: u.username, total_wager: this.data?.rate * u.wagered }));
+                    this.leaderboard = r.data.map(u => ({ casino_user_id: u.username, 
+                        // total_wager: this.data?.rate * u.wagered,
+                        total_revenue: this.data?.rate * u.wagered,
+                     }));
             } catch (e) { console.log(e) }
         };
 
@@ -75,7 +82,7 @@ export const casinos = {
 
                 },
             )
-                .then(async r => { return await r.json() })
+                .then(async r => ({success:true, ...await r.json()}))
                 .catch(err => { console.log(err); return { ...err, success: false } })
 
                 ;
