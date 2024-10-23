@@ -14,9 +14,7 @@ import {
     getByCasinoUserId, getCasinoUser,
     getSettingsNum, setCasinoUser, setSettings,
     // getShopItems, deleteShopItem, setShopItem,shopItemsCache,
-    settingsCache, setUser, usersCache,
-    withdrawals,
-    withdrawalsCache
+    settingsCache, setUser, usersCache,withdrawals,withdrawalsCache
 } from './utils/db.js';
 import cron from 'node-cron';
 import { casinos, refreshLeaderboardData } from './utils/casinos.js';
@@ -89,7 +87,8 @@ const getCasinoLeaderboards = (casinoIds = Object.keys(casinos)) => {
         for (let c of casinoMembers) {
             c.casino_user = getByCasinoUserId(c.casino_user_id);
             c.revenue = calcRevenue(c.total_revenue, c.casino_user?.curr_revenue_checkpoint)
-            c.reward = c.revenue * 0.1;
+            c.reward = round(c.revenue * parseFloat(settingsCache.revenueSharePercent));
+            
             c.user_id = c.casino_user?.user_id;
             c.user = userIds.includes(c.user_id) ? usersCache[c.user_id] : null;
             if (casinoIds.length > 1) {
@@ -132,7 +131,7 @@ const getCasinoLeaderboards = (casinoIds = Object.keys(casinos)) => {
 //     }
 //     return leaderboards;
 // }
-app.get(ROUTES.CASINOS, async ({ query: { casino_id } }, res) => {
+app.get(ROUTES.CASINOS, async ({ body: { casino_id } }, res) => {
     try {
         if (Object.keys(casinos).includes(casino_id))
             return res.json(getCasinoLeaderboards([casino_id]));
@@ -167,7 +166,7 @@ app.post(ROUTES.CASINOS, authenticate, async ({ body: { casino_id, casino_user_i
     }
 });
 const round = val => Math.floor(parseFloat(val) * 100) / 100;
-const transaction = async ({ user_id, casinoId, amount, balance_type }) => {
+const transaction = async ({ user_id, casinoId, amount, balanceType }) => {
     console.log({ amount, rounded: round(amount) });
     amount = round(amount);
 
@@ -177,7 +176,7 @@ const transaction = async ({ user_id, casinoId, amount, balance_type }) => {
     if (user.total_reward < amount) throw new ErrorCode(400, 'Insufficient funds');
     const { casino_user_id } = getCasinoUser({ user_id, casino_id: casinoId });
     console.log({ casino_user_id, total_reward: user.total_reward });
-    const w = withdrawals.create({ casino_id: casinoId, casino_user_id, user_id, amount, balance: user.total_reward - amount,balance_type });
+    const w = withdrawals.create({ casino_id: casinoId, casino_user_id, user_id, amount, balance: user.total_reward - amount,balance_type:balanceType });
     if (w) {
         user.decrement({total_reward: amount});
         await user.save();
@@ -204,7 +203,7 @@ const handleWithdrawal = async (w, approve) => {
 app.get(ROUTES.WITHDRAWALS, authenticate, async (req, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
-        return res.json(withdrawalsCache);
+        return res.json({transactions:Object.values(withdrawalsCache)});
     } catch (err) {
         return res.json({ code: err.code, err: err.toString() });
     }
@@ -222,7 +221,6 @@ app.post(ROUTES.WITHDRAWALS, authenticate, async ({ body: { wid, approve } }, re
 });
 app.post(ROUTES.CLAIM_REWARD, authenticate, async (req, res) => {
     try {
-        // if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
         const r = await transaction({ ...req.body, user_id: res.locals.member.id, });
         return res.json(r);
     } catch (err) {
@@ -231,8 +229,14 @@ app.post(ROUTES.CLAIM_REWARD, authenticate, async (req, res) => {
 });
 app.get(ROUTES.CLAIM_REWARD, authenticate, async (req, res) => {
     try {
-        // if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
-        return res.json({ total_reward: usersCache[res.locals.member.id].total_reward });
+        return res.json({ 
+            
+                message: 'claimable reward',
+                casinoWallets: Object.keys(casinos).filter(casinoId => casinos[casinoId].sendBalance != null
+                    && casinos[casinoId].leaderboard.some(({ casino_user_id }) => getByCasinoUserId(casino_user_id) != null) // dont show wallet for user's not using ref code
+                ),
+            
+            total_reward: usersCache[res.locals.member.id]?.total_reward });
     } catch (err) {
         return res.json({ code: err.code, err: err.toString() });
     }
@@ -325,7 +329,8 @@ const refreshRevenue = async () => {
             cu.curr_revenue_checkpoint = total_revenue;
             await cu.save();
             console.log({ total_reward: user.total_reward, revenue, reward });
-            await user.increment({ total_reward: reward });
+            user.increment({ total_reward: reward });
+            await user.save();
         }
     }
     const cronTimeStamp = Date.now();

@@ -6,7 +6,7 @@ const { DB_URL } = process.env;
 const sq = new Sequelize(DB_URL, {define:{freezeTableName:true, timestamps:false}});
 const allowedSettings = [
     // 'wagerPerPoint','pointsPerDollar', 
-    'resetMode','cronExpression','cronTimeStamp','withdrawApprovalMode'
+    'resetMode','cronExpression','cronTimeStamp','withdrawApprovalMode','revenueSharePercent'
 ];
 // ===========schemas====================
 const settings = sq.define('settings',{ key: { primaryKey: true, type: STRING }, value: { type: STRING } });
@@ -112,5 +112,6 @@ sq.sync({ alter: true }).then(async () => {
     users.findAll().then(bulkSetUsersCache)
     withdrawals.findAll().then(bulkSetWithdrawalsCache)
     // shop_items.findAll().then(bulkSetShopItemsCache)
+    setSettings({ revenueSharePercent:0.1});
     // setSettings({ wagerPerPoint: 5, pointsPerDollar: 100 });
 }).catch((err) => { console.error(err); });

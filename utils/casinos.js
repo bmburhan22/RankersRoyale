@@ -6,7 +6,7 @@ const { API_KEY_500, API_KEY_RAZED, API_KEY_RAZED_REF, } = process.env;
 
 export const casinos = {
     '500casino': await (new class _500casino {
-        constructor(){this.data={};}
+        constructor() { this.data = {}; }
         init = async () => await axios.get('https://500.casino/api/boot', { headers: { 'x-500-auth': API_KEY_500 } })
 
             .then(async ({ data: { userData: { referralCode }, siteSettings, balances: { crypto: currencies } } }) => {
@@ -24,10 +24,11 @@ export const casinos = {
                 );
                 this.data.datetime = new Date(Date.now()).toLocaleString();
 
-                    this.leaderboard = r.data.results.map(u => ({ casino_user_id: u._id, 
-                        // total_wager: this.data?.rate * u.totalPlayed,
-                        total_revenue: this.data?.rate * u.totalPlayed,
-                     }));
+                this.leaderboard = r.data.results.map(u => ({
+                    casino_user_id: u._id,
+                    // total_wager: this.data?.rate * u.totalPlayed,
+                    total_revenue: this.data?.rate * u.totalPlayed,
+                }));
             } catch (e) { console.log(e) }
         };
         sendBalance = async (destinationUserId, value, balanceType) => {
@@ -35,7 +36,7 @@ export const casinos = {
 
             return await axios.post('https://tradingapi.500.casino/api/v1/user/balance/send',
                 { destinationUserId, value: value * this.data.inverseRate, balanceType }, { headers: { 'x-500-auth': API_KEY_500 }, })
-                .then(r => ({success:true, ...r.data}))
+                .then(r => ({ success: true, ...r.data }))
                 .catch(err => { console.log(err); return { ...err.response.data, success: false } })
                 ;
         }
@@ -45,7 +46,7 @@ export const casinos = {
 
 
     'razed': await (new class Razed {
-        constructor(){this.data={};}
+        constructor() { this.data = {}; }
         init = async () => await fetch('https://api.razed.com/player/api/v1/profile',
             {
                 headers: { Authorization: 'Bearer ' + API_KEY_RAZED }
@@ -56,19 +57,24 @@ export const casinos = {
                 this.data = { rate: 1, currencies: ['usd'], inverseRate: 1, referralCode, referralLink }
                 await this.getLeaderboard();
                 return this;
-            }).catch(c => this);
+            }).catch(c => {
+                console.log(c);
+                return this;
+            });
         getLeaderboard = async () => {
             try {
                 console.log('fetching casino data razed')
                 const r = await fetch("https://api.razed.com/player/api/v1/referrals/leaderboard?from=0001-01-01&referral_code=Razedreloads%2CChrisspinsslots%2CReloadsJP%2CReloads&to=9999-12-31&top=100",
                     { headers: { 'X-Referral-Key': API_KEY_RAZED_REF }, },
                 ).then(r => r.json());
-                
+
                 this.data.datetime = new Date(Date.now()).toLocaleString();
-                    this.leaderboard = r.data.map(u => ({ casino_user_id: u.username, 
-                        // total_wager: this.data?.rate * u.wagered,
-                        total_revenue: this.data?.rate * u.wagered,
-                     }));
+                console.log({ total_revenue: parseFloat(this.data?.rate) * parseFloat(r.data[0].wagered) });
+                this.leaderboard = r.data.map(u => ({
+                    casino_user_id: u.username,
+                    // total_wager: this.data?.rate * u.wagered,
+                    total_revenue: parseFloat(this.data?.rate) * parseFloat(u.wagered)
+                }));
             } catch (e) { console.log(e) }
         };
 
@@ -82,7 +88,7 @@ export const casinos = {
 
                 },
             )
-                .then(async r => ({success:true, ...await r.json()}))
+                .then(async r => ({ success: true, ...await r.json() }))
                 .catch(err => { console.log(err); return { ...err, success: false } })
 
                 ;
