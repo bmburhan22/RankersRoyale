@@ -3,33 +3,27 @@ import Navbar from '../components/Navbar';
 import { useAuth } from '../utils/auth';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ROUTES } from '../../utils/routes';
-import { CssBaseline, Box, TextField, Button, Divider, Select, MenuItem, InputLabel, setRef } from '@mui/material';
-
-import { Row, } from 'react-bootstrap';
+import {  Container,  Tab, Tabs,CssBaseline, Box, TextField, Button, Divider, Select, MenuItem, InputLabel, setRef } from '@mui/material';
 import { DataGrid, GridActionsCellItem, GridAddIcon } from '@mui/x-data-grid';
-const casinoIds=['razed','500casino'];
+const casinoIds = ['razed', '500casino'];
 const Casinos = () => {
   const [params, setParams] = useSearchParams();
-  if (!casinoIds.includes(params.get('casino_id'))) setParams();
-  const { post, get } = useAuth();
+  const casinoId= params.get('casino_id');
+  // if (!casinoIds.includes(casinoId)) setParams({});
+  const { post, get, userId } = useAuth();
   const [inputData, setInputData] = useState();
-  const [leaderBoard, setLeaderboard] = useState({ total: {}, casinos: {} });
+  const [leaderBoard, setLeaderboard] = useState({});
   const [amount, setAmount] = useState(0);
   const [balanceType, setBalanceType] = useState('usdt');
-  const [casinoId, setCasinoId] = useState('500casino');
-  const [casinoWallets, setCasinoWallets] = useState([]);
-  const [totalReward, setTotalReward] = useState(0);
+  const { casino_user } = leaderBoard?.leaderboard?.find(u => u.user_id == userId) ?? {};
+  const { total_reward } = casino_user ?? {};
   // const [items, setItems] = useState([]);
   // const getShopItems = async () => await get(ROUTES.SHOP).then(r => { setItems(r.data.items); setCasinoWallets(r.data.casinoWallets) });
-  const getReward = async () => await get(ROUTES.CLAIM_REWARD).then(r => { setTotalReward(r.data.total_reward); setCasinoWallets(r.data.casinoWallets) });
   const getLeadboard = async () => {
-    const res = await get(ROUTES.CASINOS);
-    if (res.status != 200) { setLeaderboard({ total: {}, casinos: {} }); return; }
+    const res = await get(`${ROUTES.CASINOS}?casino_id=${casinoId}`);
+    if (res.status != 200) { setLeaderboard({}); return; }
     setLeaderboard(res.data);
   }
-  // const getLeadboardFromInitData = () => {
-  //   setLeaderboard(JSON.parse(document.querySelector('script#initData').textContent));
-  // }
 
   const setCasinoUserId = (casinoUserId) => post(ROUTES.CASINOS, casinoUserId);
 
@@ -38,17 +32,24 @@ const Casinos = () => {
 
   useEffect(() => {
     getLeadboard();
-    // getLeadboardFromInitData();
     // getShopItems();
-    getReward();
-  }, []);
+  }, [casinoId]);
   return (
-    <>
+    <Container>
+
+
 
       <CssBaseline />
       <Navbar />
       <div style={{ marginTop: 100 }}>
-        <h1>{params.get('casino_id')||'Total'} Leaderboard</h1>
+      {/* <Button label='Total' variant='contained'  onClick={() => {setParams()}}>TOTAL</Button> */}
+      <Tabs  value={casinoId} onChange={(_,casino_id) => {console.log(casino_id);setParams({ casino_id}); }}>
+      {...['',...casinoIds].map(c =>
+          <Tab label={c||'Total'} value={c} />
+        )}
+
+      </Tabs>
+        <> {/*
         <div>
           <h3>TOTAL LEADERBOARD</h3>
           <DataGrid getRowId={({ user_id }) => user_id}
@@ -67,67 +68,72 @@ const Casinos = () => {
             ]}
             rows={Object.values(leaderBoard.total).map(rec => ({ ...rec, ...rec.user }))}
           />
-        </div>
-
+        </div> */}
+        </>
         <div>
 
-          {Object.entries(leaderBoard.casinos).map(([casino_id, casinoData]) =>
-            <>
-              <h4>LEADERBOARD for {casino_id}</h4>
-              <br />
-              referralCode: {casinoData.referralCode}
-              <br />
-              referralLink: {casinoData.referralLink}
-              <br />
-              rate: {casinoData.rate}
-              <br />
-              inverseRate: {casinoData.inverseRate}
-              <br />
-              <Row>
-                <TextField label={casino_id + ' username'} variant='outlined' onChange={e => setInputData(v => { return { ...v, [casino_id]: e.target.value } })} />
-                <Button variant='contained' onClick={() => setCasinoUserId({ casino_id, casino_user_id: inputData[casino_id] })}>Submit</Button>
-              </Row>
-              <DataGrid getRowId={({ user_id, casino_id }) => user_id + '-' + casino_id}
-                columns={[
-                  { field: 'user_id' },
-                  { field: 'username' },
-                  { field: 'casino_user_id' },
-                  { field: 'casino_id' },
-                  // { field: 'wager' },
-                  // { field: 'total_wager' },
-                  // { field: 'wagerPerPoint' },
-                  // { field: 'prev_wager_checkpoint' },
-                  // { field: 'curr_wager_checkpoint' },
-                  // { field: 'points' },
-                  // { field: 'total_points' },
+          {!casinoIds.includes(casinoId) ? <></> : <div>
 
-                  { field: 'revenue' },
-                  { field: 'total_revenue' },
-                  { field: 'prev_revenue_checkpoint' },
-                  { field: 'curr_revenue_checkpoint' },
-                  { field: 'reward' },
-                  { field: 'total_reward' },
+            <h4>{casinoId || 'Total'} Leaderboard</h4>
+            <br />
+            referralCode: {leaderBoard.referralCode}
+            <br />
+            referralLink: {leaderBoard.referralLink}
+            <br />
+            rate: {leaderBoard.rate}
+            <br />
+            inverseRate: {leaderBoard.inverseRate}
+            <br />
+            
+              <TextField label={casinoId + ' username'} variant='outlined' onChange={e => setInputData(v => { return { ...v, [casinoId]: e.target.value } })} />
+              <Button variant='contained' onClick={() => setCasinoUserId({ casino_id: casinoId, casino_user_id: inputData[casinoId] })}>Submit</Button>
+            
+          </div>
+          }         <DataGrid getRowId={({ user_id, casino_id }) => user_id + '-' + casino_id}
+            columns={[
+              { field: 'user_id' },
+              { field: 'username' },
+              { field: 'casino_user_id' },
+              { field: 'casino_id' },
+              // { field: 'wager' },
+              // { field: 'total_wager' },
+              // { field: 'wagerPerPoint' },
+              // { field: 'prev_wager_checkpoint' },
+              // { field: 'curr_wager_checkpoint' },
+              // { field: 'points' },
+              // { field: 'total_points' },
 
-                ]}
-                rows={casinoData.leaderboard
-                  .map(rec => ({ ...rec, ...rec.user, ...rec.casino_user }))
-                }
-              />
-            </>)}
+              { field: 'reward' },
+              { field: 'revenue' },
+
+              { field: 'total_revenue' },
+              { field: 'prev_revenue_checkpoint' },
+              { field: 'curr_revenue_checkpoint' },
+              { field: 'total_reward' },
+
+            ]
+              .filter(({ field }) => casinoIds.includes(casinoId) ? true : ['reward', 'revenue', 'user_id', 'username'].includes(field))
+            }
+            rows={leaderBoard?.leaderboard?.map(rec => ({ ...rec, ...rec.user, ...rec.casino_user }))
+            }
+          />
+
         </div>
 
-
-        <div>
-          <TextField fullWidth label={`Amount (available: ${totalReward})`} type='number' variant='outlined' slotProps={{ htmlInput: { max: totalReward, min: 0 } }} value={amount} onChange={({ target: { value } }) => setAmount(value)} ></TextField>
-          <Select label='Currency' variant='outlined' value={balanceType} onChange={({ target: { value } }) => setBalanceType(value)} >
-            {leaderBoard?.casinos?.[casinoId]?.currencies?.map(curr => <MenuItem value={curr}>{curr}</MenuItem>)}
-          </Select>
-          <Select label='Destination wallet' variant='outlined' value={casinoId} onChange={({ target: { value } }) => setCasinoId(value)} >
-            {casinoWallets.map(cw => <MenuItem value={cw}>{cw}</MenuItem>)}
-          </Select>
-          <Button variant='contained' onClick={sendBalance}>Send</Button>
-        </div>
-        
+        <>
+          {
+            leaderBoard?.allowWithdraw ?
+              <div>
+                <TextField fullWidth label={`Amount (available: ${total_reward})`} type='number' variant='outlined'
+                  slotProps={{ htmlInput: { max: total_reward, min: 0 } }} value={amount}
+                  onChange={({ target: { value } }) => setAmount(value)} ></TextField>
+                <Select label='Currency' variant='outlined' value={balanceType} onChange={({ target: { value } }) => setBalanceType(value)} >
+                  {leaderBoard?.currencies?.map(curr => <MenuItem value={curr}>{curr}</MenuItem>)}
+                </Select>
+                <Button variant='contained' onClick={sendBalance}>Send</Button>
+              </div> : <></>
+          }
+        </>
         <>
           {/* 
         <Divider variant="fullWidth" flexItem/>
@@ -149,9 +155,9 @@ const Casinos = () => {
           ]}
         /> */}
         </>
-      
+
       </div>
-    </>
+    </Container>
   );
 };
 

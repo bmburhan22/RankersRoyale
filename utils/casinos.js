@@ -12,7 +12,7 @@ export const casinos = {
             .then(async ({ data: { userData: { referralCode }, siteSettings, balances: { crypto: currencies } } }) => {
                 const { rate, inverseRate } = siteSettings.currencyRates.bux.usd;
                 const referralLink = "https://500.casino/r/" + referralCode
-                this.data = { rate, currencies, inverseRate, referralCode, referralLink }
+                this.data = {allowWithdraw:true, rate, currencies, inverseRate, referralCode, referralLink }
                 await this.getLeaderboard();
                 return this;
             }).catch(c => this);
@@ -27,7 +27,7 @@ export const casinos = {
                 this.leaderboard = r.data.results.map(u => ({
                     casino_user_id: u._id,
                     // total_wager: this.data?.rate * u.totalPlayed,
-                    total_revenue: this.data?.rate * u.totalPlayed,
+                    total_revenue: parseFloat(this.data?.rate) *parseFloat( u.totalPlayed),
                 }));
             } catch (e) { console.log(e) }
         };
@@ -54,7 +54,7 @@ export const casinos = {
             .then(r => r.json())
             .then(async ({ referral_code: referralCode }) => {
                 const referralLink = "https://www.razed.com/signup/?raf=" + referralCode
-                this.data = { rate: 1, currencies: ['usd'], inverseRate: 1, referralCode, referralLink }
+                this.data = {allowWithdraw:false, rate: 1, currencies: ['usd'], inverseRate: 1, referralCode, referralLink }
                 await this.getLeaderboard();
                 return this;
             }).catch(c => {
@@ -69,7 +69,6 @@ export const casinos = {
                 ).then(r => r.json());
 
                 this.data.datetime = new Date(Date.now()).toLocaleString();
-                console.log({ total_revenue: parseFloat(this.data?.rate) * parseFloat(r.data[0].wagered) });
                 this.leaderboard = r.data.map(u => ({
                     casino_user_id: u.username,
                     // total_wager: this.data?.rate * u.wagered,

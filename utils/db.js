@@ -6,7 +6,7 @@ const { DB_URL } = process.env;
 const sq = new Sequelize(DB_URL, {define:{freezeTableName:true, timestamps:false}});
 const allowedSettings = [
     // 'wagerPerPoint','pointsPerDollar', 
-    'resetMode','cronExpression','cronTimeStamp','withdrawApprovalMode','revenueSharePercent'
+    'resetMode','cronExpression','cronTimeStamp','withdrawApprovalMode','revenueSharePercent','withdrawCronExpression'
 ];
 // ===========schemas====================
 const settings = sq.define('settings',{ key: { primaryKey: true, type: STRING }, value: { type: STRING } });
@@ -15,13 +15,14 @@ const settings = sq.define('settings',{ key: { primaryKey: true, type: STRING },
 //     { item_id: { primaryKey: true, type: INTEGER, unique: true }, price: { type: DECIMAL(1000, 2) }, minAmount: { type: DECIMAL(1000, 2) }, maxAmount: { type: DECIMAL(1000, 2) }, desc: { type: STRING }, }
 // );
 const users = sq.define('users',
-    {id: { primaryKey: true, type: STRING }, username: { type: STRING }, discriminator: { type: STRING }, /*total_points*/total_reward: { type: DECIMAL(1000, 2), defaultValue: 0 }}
+    {id: { primaryKey: true, type: STRING }, username: { type: STRING }, discriminator: { type: STRING }, /*total_points*/}
 );
 const users_casinos = sq.define('users_casinos',
     {
         user_id: { primaryKey: true, type: STRING, allowNull: false }, casino_id: { type: STRING, primaryKey: true, allowNull: false }, casino_user_id: { type: STRING },
         // prev_wager_checkpoint: { type: DECIMAL(1000, 2) }, curr_wager_checkpoint: { type: DECIMAL(1000, 2) }
-        prev_revenue_checkpoint: { type: DECIMAL(1000, 2) }, curr_revenue_checkpoint: { type: DECIMAL(1000, 2) }
+        prev_revenue_checkpoint: { type: DECIMAL(1000, 2), defaultValue:null,allowNull:true }, curr_revenue_checkpoint: { type: DECIMAL(1000, 2),defaultValue:null,allowNull:true },
+        total_reward: { type: DECIMAL(1000, 2), defaultValue: 0,allowNull:true},
     }
 );
 
@@ -40,7 +41,8 @@ export const getByCasinoUserId = (casino_user_id) => Object.values(usersCasinosC
 export const setCasinoUser = async (cu) => {
     return await users_casinos.upsert(cu, { updateOnDuplicate: [  'casino_user_id',
         // 'prev_wager_checkpoint', 'curr_wager_checkpoint',
-        'prev_revenue_checkpoint', 'curr_revenue_checkpoint',
+        'prev_revenue_checkpoint', 'curr_revenue_checkpoint','total_reward'
+
     ], returning:true });}
 export const casinoUsers = () => Object.values(usersCasinosCache);
 export const getCasinoUser = (rec) => usersCasinosCache[usersCasinosKey(rec)]
@@ -57,7 +59,7 @@ users_casinos.addHook('afterDestroy',(rec) => {
 // =============USERS=================
 export const usersCache = {};
 // export const setUser =async ({ id, total_points, username, discriminator }) =>await users.upsert({ id, total_points, username, discriminator  }, { updateOnDuplicate: ['total_points', 'username', 'discriminator'],returning:true });
-export const setUser =async ({ id, total_reward, username, discriminator }) =>await users.upsert({ id, total_reward, username, discriminator  }, { updateOnDuplicate: ['total_reward', 'username', 'discriminator'],returning:true });
+export const setUser =async ({ id,  username, discriminator }) =>await users.upsert({ id, username, discriminator  }, { updateOnDuplicate: [ 'username', 'discriminator'],returning:true });
 const setUsersCache = (user) => { usersCache[user.id] = user;console.log('updated user');  };
 const bulkSetUsersCache = (records) => records.forEach(setUsersCache)
 users.addHook('afterUpsert',([user])=> setUsersCache(user));
@@ -82,8 +84,11 @@ settings.addHook('afterBulkCreate', bulkSetSettingsCache);
 export const getSettingsNum = (key) => parseFloat(settingsCache[key]);
 
 // ============== Withdrawals ===========
+
 export const withdrawalsCache= {};
 const setWithdrawalsCache = w=>withdrawalsCache[w.id] = w;
+
+
 const bulkSetWithdrawalsCache= records => records.forEach(setWithdrawalsCache);
 withdrawals.addHook('afterUpsert',([w])=> setWithdrawalsCache(w));
 withdrawals.addHook('afterSave', setWithdrawalsCache);

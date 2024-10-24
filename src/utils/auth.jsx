@@ -1,7 +1,7 @@
 import { createContext, useState, useContext, useLayoutEffect } from 'react';
 import axios from "axios";
 import Cookie from 'js-cookie';
-import {ROUTES} from '../../utils/routes.js';
+import { ROUTES } from '../../utils/routes.js';
 import { useNavigate } from 'react-router-dom';
 
 export const AuthContext = createContext();
@@ -9,26 +9,26 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
   const get = async (path, data) => {
-    const res = await axios.get(API_URL + path,  data ); 
+    const res = await axios.get(API_URL + path, { data });
     // console.log({ method: 'get', status: res.status, statusText: res.statusText ,res});
     if (res.status != 200) await validateAuth();
     return res;
   }
   const post = async (path, data) => {
-    const res = await axios.post(API_URL + path,  data );
+    const res = await axios.post(API_URL + path, data);
     // console.log({ method: 'post', status: res.status, statusText: res.statusText ,data});
 
     if (res.status != 200) await validateAuth();
-    return res; 
+    return res;
   }
   const del = async (path, data) => {
-    console.log({delete:true,data});
-    
-    const res = await axios.delete(API_URL + path,  {data} );
+    console.log({ delete: true, data });
+
+    const res = await axios.delete(API_URL + path, { data });
     // console.log({ method: 'post', status: res.status, statusText: res.statusText ,data});
 
     if (res.status != 200) await validateAuth();
-    return res; 
+    return res;
   }
   const [auth, setAuth] = useState(null);
   const navigate = useNavigate();
@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }) => {
           });
           return;
         }
-      } 
+      }
     } catch (e) {
       console.error('Unable to fetch user', e);
     }
@@ -57,13 +57,13 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     // navigate(ROUTES.HOME, { replace: true });
-    setAuth({ isAuth: false,isAdmin:false })
+    setAuth({ isAuth: false, isAdmin: false })
     // Cookie.remove('token');
 
   }
 
   return (
-    <AuthContext.Provider value={{ get, post, del,validateAuth, logout, ...auth }}>
+    <AuthContext.Provider value={{ get, post, del, validateAuth, logout, ...auth }}>
       {children}
     </AuthContext.Provider>
   );

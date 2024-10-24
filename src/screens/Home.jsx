@@ -6,11 +6,11 @@ import {ROUTES} from '../../utils/routes';
 const Home=() => {
   const {pathname} = useLocation();
   return (
-    <Box sx={{ display: 'flex', height: '100vh' }}>
+    <Box sx={{ display: 'flex', height: '100vh',m:10 }}>
       <CssBaseline />
       <Navbar />
       <Link style={{height:80}} to={ROUTES.CASINOS_PAGE}>
-      {pathname}
+      GO TO CASINOS
       </Link>
     </Box>
   );

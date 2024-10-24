@@ -14,7 +14,7 @@ import {
     getByCasinoUserId, getCasinoUser,
     getSettingsNum, setCasinoUser, setSettings,
     // getShopItems, deleteShopItem, setShopItem,shopItemsCache,
-    settingsCache, setUser, usersCache,withdrawals,withdrawalsCache
+    settingsCache, setUser, usersCache, withdrawals, withdrawalsCache
 } from './utils/db.js';
 import cron from 'node-cron';
 import { casinos, refreshLeaderboardData } from './utils/casinos.js';
@@ -88,8 +88,10 @@ const getCasinoLeaderboards = (casinoIds = Object.keys(casinos)) => {
             c.casino_user = getByCasinoUserId(c.casino_user_id);
             c.revenue = calcRevenue(c.total_revenue, c.casino_user?.curr_revenue_checkpoint)
             c.reward = round(c.revenue * parseFloat(settingsCache.revenueSharePercent));
-            
+
             c.user_id = c.casino_user?.user_id;
+
+
             c.user = userIds.includes(c.user_id) ? usersCache[c.user_id] : null;
             if (casinoIds.length > 1) {
                 if (leaderboards.total[c.user_id]) {
@@ -131,11 +133,13 @@ const getCasinoLeaderboards = (casinoIds = Object.keys(casinos)) => {
 //     }
 //     return leaderboards;
 // }
-app.get(ROUTES.CASINOS, async ({ body: { casino_id } }, res) => {
+app.get(ROUTES.CASINOS, async ({ query: { casino_id } }, res) => {
     try {
         if (Object.keys(casinos).includes(casino_id))
-            return res.json(getCasinoLeaderboards([casino_id]));
-        return res.json(getCasinoLeaderboards());
+            return res.json(getCasinoLeaderboards([casino_id]).casinos[casino_id]);
+        return res.json({leaderboard: Object.values(getCasinoLeaderboards().total)
+            .toSorted((a, b) => b.revenue - a.revenue)
+         });
     } catch (err) {
         return res.json({ err: err.toString() });
     }
@@ -143,9 +147,10 @@ app.get(ROUTES.CASINOS, async ({ body: { casino_id } }, res) => {
 
 
 const memberToUser = (member) => {
-    const { username, discriminator, globalName } = member.user;
+    const { username, discriminator, globalName,id:userId } = member.user;
     const { displayAvatarURL, nickname, isAdmin } = member.toJSON();
-    return { isAdmin, username, discriminator, globalName, nickname, displayAvatarURL };
+    
+    return { isAdmin, username, discriminator, globalName, nickname, displayAvatarURL,userId};
 }
 
 app.get(ROUTES.ME, authenticate, async (req, res) => {
@@ -170,55 +175,82 @@ const transaction = async ({ user_id, casinoId, amount, balanceType }) => {
     console.log({ amount, rounded: round(amount) });
     amount = round(amount);
 
-    const user = usersCache[user_id];
     if (amount > 100) throw new ErrorCode(400, 'Redeem amount must not be more than 100');
     if (amount < 0.01) throw new ErrorCode(400, 'Redeem amount must be atleast 0.01');
-    if (user.total_reward < amount) throw new ErrorCode(400, 'Insufficient funds');
-    const { casino_user_id } = getCasinoUser({ user_id, casino_id: casinoId });
-    console.log({ casino_user_id, total_reward: user.total_reward });
-    const w = withdrawals.create({ casino_id: casinoId, casino_user_id, user_id, amount, balance: user.total_reward - amount,balance_type:balanceType });
+    const casino_user = getCasinoUser({ user_id, casino_id: casinoId });
+    if (casino_user.total_reward < amount) throw new ErrorCode(400, 'Insufficient funds');
+    console.log({ casino_user_id:casino_user.casino_user_id, total_reward: casino_user.total_reward });
+    const w = withdrawals.create({ casino_id: casinoId, casino_user_id:casino_user.casino_user_id, user_id, amount, balance: casino_user.total_reward - amount, balance_type: balanceType });
     if (w) {
-        user.decrement({total_reward: amount});
-        await user.save();
+        casino_user.decrement({ total_reward: amount });
+        await casino_user.save();
     }
     return w;
 }
 
 const handleWithdrawal = async (w, approve) => {
+    console.log(w, approve);
     const amount = parseFloat(w.amount);
-    if (approve)
-        {
-            const {success} = await casinos[w.casino_id].sendBalance(w.casino_user_id, amount, w.balance_type);
-            approve=success
-        }
-    if (!approve) {
-        const u = usersCache[w.user_id];
-        u.increment({total_reward:amount});
-        await u.save();
+    approve =  approve&&casinos[w.casino_id].data.allowWithdraw;
+    if (approve) {
+        const { success } = await casinos[w.casino_id].sendBalance(w.casino_user_id, amount, w.balance_type);
+        approve = success
+    }
+    if ( !approve) {
+    const casino_user = getCasinoUser(w);
+
+        console.log({ withdraw: 'runnin', total_reward: amount });
+        casino_user.increment({ total_reward: amount });
+        await casino_user.save();
     }
 
     w.status = approve == null ? 'pending' : approve ? 'approved' : 'rejected';
     return await w.save();
+
 }
 app.get(ROUTES.WITHDRAWALS, authenticate, async (req, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
-        return res.json({transactions:Object.values(withdrawalsCache)});
+        return res.json({
+            transactions: Object.values(withdrawalsCache).map(({ dataValues: { createdAt, updatedAt, ...w } }) =>
+                ({ ...w, createdAt: createdAt.getTime(), updatedAt: updatedAt.getTime() })
+            )
+        });
     } catch (err) {
         return res.json({ code: err.code, err: err.toString() });
     }
+
 });
 app.post(ROUTES.WITHDRAWALS, authenticate, async ({ body: { wid, approve } }, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
         if (!withdrawalsCache[wid]) throw new ErrorCode(400, 'Transaction not found');
-        if (['approved','rejected'].includes(withdrawalsCache[wid]?.status) ) throw new ErrorCode(400, 'Transaction found to be '+withdrawalsCache[wid]?.status);
+        if (['approved', 'rejected'].includes(withdrawalsCache[wid]?.status)) throw new ErrorCode(400, 'Transaction found to be ' + withdrawalsCache[wid]?.status);
         if (approve == null) throw new ErrorCode(400, 'Specify approval true/false');
         return res.json(handleWithdrawal(withdrawalsCache[wid], approve));
     } catch (err) {
         return res.json({ code: err.code, err: err.toString() });
     }
 });
+
+const approveWithdrawals = async () => {
+    for await (let w of Object.values(withdrawalsCache)) {
+        if (w.status == 'pending') await handleWithdrawal(w,
+            false // TODO: make approve=true  
+        );
+    }
+}
+let withdrawTask;
+const scheduleWithdrawTask = async () => {
+    const { withdrawApprovalMode, withdrawCronExpression } = settingsCache;
+    const scheduled = withdrawApprovalMode == 'auto';
+    console.log({ valid: cron.validate(withdrawCronExpression), withdrawApprovalMode, scheduled, withdrawCronExpression });
+    withdrawTask?.stop();
+    withdrawTask = (!scheduled || !cron.validate(withdrawCronExpression)) ? null : cron.schedule(withdrawCronExpression, approveWithdrawals, { timezone: 'ist', scheduled });
+    withdrawTask?.start();
+}
+scheduleWithdrawTask();
+
 app.post(ROUTES.CLAIM_REWARD, authenticate, async (req, res) => {
     try {
         const r = await transaction({ ...req.body, user_id: res.locals.member.id, });
@@ -227,20 +259,21 @@ app.post(ROUTES.CLAIM_REWARD, authenticate, async (req, res) => {
         return res.json({ code: err.code, err: err.toString() });
     }
 });
-app.get(ROUTES.CLAIM_REWARD, authenticate, async (req, res) => {
-    try {
-        return res.json({ 
-            
-                message: 'claimable reward',
-                casinoWallets: Object.keys(casinos).filter(casinoId => casinos[casinoId].sendBalance != null
-                    && casinos[casinoId].leaderboard.some(({ casino_user_id }) => getByCasinoUserId(casino_user_id) != null) // dont show wallet for user's not using ref code
-                ),
-            
-            total_reward: usersCache[res.locals.member.id]?.total_reward });
-    } catch (err) {
-        return res.json({ code: err.code, err: err.toString() });
-    }
-});
+// app.get(ROUTES.CLAIM_REWARD, authenticate, async ({body:{casinoId:casino_id}}, res) => {
+//     try {
+//         return res.json({
+
+//             message: 'claimable reward',
+//             casinoWallets: casinos[casino_id].sendBalance != null
+//                 && casinos[casino_id].leaderboard.some(({ casino_user_id }) => getByCasinoUserId(casino_user_id) != null) // dont show wallet for user's not using ref code
+//             ,
+
+//             total_reward: getCasinoUser({casino_id,user_id: res.locals.member.id})?.total_reward
+//         });
+//     } catch (err) {
+//         return res.json({ code: err.code, err: err.toString() });
+//     }
+// });
 /*
 const transaction = async ({ user_id, casinoId, amount, price, balanceType }) => {
     console.log({ amount, price, rounded: round(amount) });
@@ -298,14 +331,16 @@ app.get(ROUTES.MEMBERS, async (req, res) => {
     }
 });
 app.post(ROUTES.MEMBERS, async ({ body: { user_id, casino_id, casino_user_id, /*total_points,curr_wager_checkpoint, prev_wager_checkpoint*/
-    curr_revenue_checkpoint, prev_revenue_checkpoint } }, res) => {
+    curr_revenue_checkpoint, prev_revenue_checkpoint, total_reward } }, res) => {
     try {
         const [casinoUser] = await setCasinoUser({
             user_id, casino_user_id, casino_id,/* curr_wager_checkpoint, prev_wager_checkpoint*/
-            curr_revenue_checkpoint, prev_revenue_checkpoint,
+            curr_revenue_checkpoint, prev_revenue_checkpoint,total_reward
         });
-        const [usersData] = await setUser({ id: user_id, /*total_points*/ total_revenue });
-        return res.json({ ...casinoUser.dataValues, ...usersData.dataValues });
+        // const [usersData] = await setUser({ id: user_id, /*total_points*/  });
+        return res.json({ ...casinoUser.dataValues, //...usersData.dataValues
+
+         });
 
     } catch (err) {
         return res.json({ err: err.toString() });
@@ -322,15 +357,15 @@ app.delete(ROUTES.MEMBERS, async ({ body: { user_id, casino_id } }, res) => {
 });
 
 const refreshRevenue = async () => {
+    console.log('REFRESHING REVENUE');
     await refreshLeaderboardData();
     for await (let casinoData of Object.values(getCasinoLeaderboards().casinos)) {
-        for await (let { total_revenue, revenue, reward, casino_user: cu, user } of casinoData.leaderboard) {
+        for await (let { total_revenue, revenue, reward, casino_user: cu } of casinoData.leaderboard) {
             cu.prev_revenue_checkpoint = cu.curr_revenue_checkpoint ?? cu.prev_revenue_checkpoint;
             cu.curr_revenue_checkpoint = total_revenue;
+            cu.increment({ total_reward: reward });
             await cu.save();
-            console.log({ total_reward: user.total_reward, revenue, reward });
-            user.increment({ total_reward: reward });
-            await user.save();
+            console.log({ total_reward: cu.total_reward, revenue, reward });
         }
     }
     const cronTimeStamp = Date.now();
@@ -405,10 +440,12 @@ app.post(ROUTES.RESET_LEADERBOARD, authenticate, async (req, res) => {
 app.post(ROUTES.SETTINGS, authenticate, async ({ body: settingsObj }, res) => {
     try {
         if (!res.locals.member.isAdmin) throw new ErrorCode(403, 'Not admin');
-        const { cronExpression, resetMode } = settingsObj;
+        const { cronExpression, resetMode, withdrawApprovalMode, withdrawCronExpression } = settingsObj;
         const toRescheduleTask = cronExpression != settingsCache.cronExpression || resetMode != settingsCache.resetMode;
+        const toRescheduleWithdrawTask = withdrawCronExpression != settingsCache.withdrawCronExpression || withdrawApprovalMode != settingsCache.withdrawApprovalMode;
         const settingsList = await setSettings(settingsObj);
         if (toRescheduleTask) await scheduleTask();
+        if (toRescheduleWithdrawTask) await scheduleWithdrawTask();
 
         return res.json({ message: 'Settings changed', ...settingsList });
     } catch (err) {

@@ -64,6 +64,9 @@ const AdminHome = () => {
                 {/* <TextField type='number' value={settingsObj.pointsPerDollar ?? ''} onChange={({ target: { value: pointsPerDollar } }) => setSettingsObj((obj) => ({ ...obj, pointsPerDollar }))} label='Points Per Dollar' /> */}
 
                 <TextField value={settingsObj.revenueSharePercent ?? ''} type='number' variant='outlined' slotProps={{ htmlInput: { max: 1, min: 0 } }} onChange={({ target: { value: revenueSharePercent } }) => setSettingsObj((obj) => ({ ...obj, revenueSharePercent }))} label='Revenue Share Factor 0-1' />
+                
+                <TextField value={settingsObj.withdrawCronExpression ?? ''} onChange={({ target: { value: withdrawCronExpression } }) => setSettingsObj((obj) => ({ ...obj, withdrawCronExpression }))} label='Withdrawal Cron Expression' />
+
                 <Select value={settingsObj.withdrawApprovalMode || 'auto'} onChange={({ target: { value: withdrawApprovalMode } }) => setSettingsObj(obj => ({ ...obj, withdrawApprovalMode }))}>
                   <MenuItem value='auto'>Auto</MenuItem>
                   <MenuItem value='manual'>Manual</MenuItem>
@@ -110,6 +113,11 @@ const AdminHome = () => {
 
               </>
               <DataGrid getRowId={({ id }) => id}
+               initialState={{
+                sorting: {
+                  sortModel: [{ field: 'id', sort: 'desc' }],
+                },
+              }}
                 rows={transactions}
                 columns={[
                   { field: 'id' },
@@ -122,8 +130,12 @@ const AdminHome = () => {
                   { field: 'user_id' },
                   { field: 'casino_id' },
                   { field: 'casino_user_id' },
-                  { field: 'createdAt' },
-                  { field: 'updatedAt' },
+                  { field: 'createdAt',         type: 'dateTime',
+                    valueGetter: (value) => value && new Date(value),
+                  },
+                  { field: 'updatedAt' ,          type: 'dateTime',
+                    valueGetter: (value) => value && new Date(value),
+                  },
 
                   {
                     field: 'actions', type: 'actions',
