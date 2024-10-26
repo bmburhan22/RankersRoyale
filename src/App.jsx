@@ -1,34 +1,26 @@
 import { useState } from 'react'
-import {Navigate, Routes, Route} from 'react-router-dom'
-import './App.css'
-import {get, endPoints } from './utilities/api';
-import { routes } from './utilities/routes';
-import axios from 'axios';
-import TopNavbar  from './components/navbar';
-import Topbar from './components/navbar';
-import { AuthProvider, AuthContext } from './utilities/auth';
+import { Navigate, Routes, Route, BrowserRouter } from 'react-router-dom'
 
+import { AuthProvider } from './utils/auth';
+import {ROUTES} from '../utils/routes';
+import { BrowseGalleryTwoTone } from '@mui/icons-material';
+import Home from './screens/Home';
+import Casinos from './screens/Casinos';
+import AdminHome from './screens/AdminHome';
 
 function App() {
-    // get(endPoints['REDIRECT'], {})
-    // axios.get('http://localhost:2000/redirect').then((res)=>console.log(res.data ));
-    
+  
   return (
-    <>
+    <BrowserRouter >
     <AuthProvider>
-      <Routes>
-        <Route path={routes.LOGIN} element={<Topbar />} />
-
-        {/* {auth.isAuthenticated ? (
-          <Route path="/dashboard" element={<Dashboard />} />
-        ) : (
-          <Route path={routes.LOGIN} element={<Navigate to="/login" />} />
-        )}
-         */}
-      </Routes>
+        <Routes>
+          <Route path={ROUTES.HOME} element={<Home />} />
+          <Route path={ROUTES.CASINOS_PAGE} element={<Casinos />} />
+          <Route path={ROUTES.ADMIN_HOME} element={<AdminHome />} />
+        </Routes>
     </AuthProvider>
-    </>
-  )
+      </BrowserRouter>
+  );
 }
 
 export default App

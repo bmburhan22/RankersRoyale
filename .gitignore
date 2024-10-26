@@ -1,5 +1,8 @@
+certs/
+*.pem
+*.sqlite
 .env
-
+start-ngrok.bat
 # Logs
 logs
 *.log

@@ -7,9 +7,8 @@ import Toolbar from '@mui/material/Toolbar';
 import CssBaseline from '@mui/material/CssBaseline';
 import AdbIcon from '@mui/icons-material/Adb';
 import Typography from '@mui/material/Typography';
-import axios from 'axios';
-import { AuthContext } from '../utilities/auth'; 
-
+import { useAuth } from '../utils/auth';
+import {ROUTES}  from '../../utils/routes';
 const drawerWidth = 240;
 const appBarHeight = 64;
 
@@ -23,54 +22,42 @@ const AppBar = styled(MuiAppBar)(({ theme }) => ({
   }),
 }));
 
-const loginUrl ='http://192.168.3.101:2000/auth/discord/login';
+const Navbar= () => {
+  const  { isAuth,username, logout, nickname, globalName, discriminator, displayAvatarURL } = useAuth();
+  return (
 
-const Topbar = () => {  
-  const { isAuthenticated, login } = useContext(AuthContext); 
-
-  const handleLoginClick = () => {
-    discorlogin();
-  };
-
-  const discorlogin = () => {
-    axios.get('http://192.168.3.101:2000/redirect')
-      .then((res) => {
-        if (res.data.token) {
-          // login(res.data.token, res.data.profilePhoto); 
-          window.location.href = loginUrl; 
-        }
-      })
-      .catch((error) => console.error(error));
-  };
-
-  return (  
-    <Box sx={{ display: 'flex', height: '100vh' }}>
-      <CssBaseline />
       <AppBar position="fixed">
         <Toolbar>
-          
+
           <AdbIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
-          <Typography variant="h6" noWrap component="a" href="/" sx={{ mr: 2, display: { xs: 'none', md: 'flex' }, fontFamily: 'monospace', fontWeight: 700, letterSpacing: '.3rem', color: 'inherit', textDecoration: 'none',}}>
+          <Typography variant="h6" noWrap component="a" href="/" sx={{ mr: 2, display: { xs: 'none', md: 'flex' }, fontFamily: 'monospace', fontWeight: 700, letterSpacing: '.3rem', color: 'inherit', textDecoration: 'none', }}>
             RankersRoyale
           </Typography>
-          
+
           <Box sx={{ display: { xs: 'none', sm: 'block' }, ml: 'auto' }}>
-            {isAuthenticated ? (
-              <img src={localStorage.getItem('avatar')}  alt="Profile" style={styles.profilePhoto}/>
-              ) : (
-              <a href={loginUrl} style={styles.loginButton} > 
+            { isAuth ? (
+
+
+              <div style={{ display: 'flex' }} className='row'>
+                <Typography>{nickname} | {globalName} - {username}{discriminator == '0' ? '' : '#' + discriminator}</Typography>
+                <FaDiscord style={styles.icon} />
+                <img src={displayAvatarURL} alt="Profile" style={styles.profilePhoto} />
+                <button onClick={logout} style={styles.loginButton}>Logout</button>
+              </div>
+
+            ) : (
+              <a href={ROUTES.LOGIN} style={styles.loginButton} >
                 <FaDiscord style={styles.icon} />
                 Login
               </a>
-             )}
+            )}
           </Box>
-        
-        </Toolbar>      
+
+        </Toolbar>
       </AppBar>
-    </Box>
   );
 };
-// onClick={(e) => { e.preventDefault(); handleLoginClick();}}
+
 const styles = {
   loginButton: {
     display: 'flex',
@@ -93,4 +80,5 @@ const styles = {
   }
 };
 
-export default Topbar;
+
+export default Navbar;
