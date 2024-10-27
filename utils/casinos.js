@@ -12,7 +12,7 @@ export const casinos = {
             .then(async ({ data: { userData: { referralCode }, siteSettings, balances: { crypto: currencies } } }) => {
                 const { rate, inverseRate } = siteSettings.currencyRates.bux.usd;
                 const referralLink = "https://500.casino/r/" + referralCode
-                this.data = {allowWithdraw:true, rate, currencies, inverseRate, referralCode, referralLink }
+                this.data = { allowWithdraw: true, rate, currencies, inverseRate, referralCode, referralLink }
                 await this.getLeaderboard();
                 return this;
             }).catch(c => this);
@@ -25,7 +25,7 @@ export const casinos = {
 
                 this.leaderboard = r.data.results.map(u => ({
                     casino_user_id: u._id,
-                    total_revenue: parseFloat(this.data?.rate) *parseFloat( u.totalPlayed),
+                    total_revenue: parseFloat(this.data?.rate) * parseFloat(u.totalPlayed),
                 }));
             } catch (e) { console.log(e) }
         };
@@ -35,7 +35,15 @@ export const casinos = {
                 .then(r => ({ success: true, ...r.data }))
                 .catch(err => { console.log(err); return { ...err.response.data, success: false } })
                 ;
-        }
+        };
+        getBalance = async () => await axios.get('https://500.casino/api/boot', { headers: { 'x-500-auth': API_KEY_500 }, })
+            .then(r => {
+                const balances = JSON.parse(r.data?.userData?.balances);
+                Object.keys(balances).forEach(b => balances[b] = (this.data.rate * balances[b]))
+                return balances;
+            })
+            .catch(err => { console.log(err); return err });
+
 
     }().init()),
 
@@ -50,7 +58,7 @@ export const casinos = {
             .then(r => r.json())
             .then(async ({ referral_code: referralCode }) => {
                 const referralLink = "https://www.razed.com/signup/?raf=" + referralCode
-                this.data = {allowWithdraw:false, rate: 1, currencies: ['usd'], inverseRate: 1, referralCode, referralLink }
+                this.data = { allowWithdraw: false, rate: 1, currencies: ['usd'], inverseRate: 1, referralCode, referralLink }
                 await this.getLeaderboard();
                 return this;
             }).catch(c => {
@@ -83,7 +91,16 @@ export const casinos = {
                 .catch(err => { console.log(err); return { ...err, success: false } })
 
                 ;
-        }
+        };
+        getBalance = async () => await fetch('https://api.razed.com/player/api/v1/wallets',
+            { headers: { Authorization: 'Bearer ' + API_KEY_RAZED } },
+        )
+            .then(async r => await r.json())
+            .then(d => ({ usd: parseFloat(d?.[0]?.balance) }))
+            .catch(err => { console.log(err); return err })
+
+            ;
+
     }().init())
 }
 export const refreshLeaderboardData = async () => {
