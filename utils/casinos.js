@@ -18,7 +18,6 @@ export const casinos = {
             }).catch(c => this);
         getLeaderboard = async () => {
             try {
-                console.log('fetching casino data 500casino')
                 const r = await axios.post("https://500.casino/api/rewards/affiliate-users",
                     { sorting: { totalPlayed: -1 } }, { headers: { 'x-500-auth': API_KEY_500 } }
                 );
@@ -26,14 +25,11 @@ export const casinos = {
 
                 this.leaderboard = r.data.results.map(u => ({
                     casino_user_id: u._id,
-                    // total_wager: this.data?.rate * u.totalPlayed,
                     total_revenue: parseFloat(this.data?.rate) *parseFloat( u.totalPlayed),
                 }));
             } catch (e) { console.log(e) }
         };
         sendBalance = async (destinationUserId, value, balanceType) => {
-            console.log({ value, converted: value * this.data.inverseRate });
-
             return await axios.post('https://tradingapi.500.casino/api/v1/user/balance/send',
                 { destinationUserId, value: value * this.data.inverseRate, balanceType }, { headers: { 'x-500-auth': API_KEY_500 }, })
                 .then(r => ({ success: true, ...r.data }))
@@ -63,7 +59,6 @@ export const casinos = {
             });
         getLeaderboard = async () => {
             try {
-                console.log('fetching casino data razed')
                 const r = await fetch("https://api.razed.com/player/api/v1/referrals/leaderboard?from=0001-01-01&referral_code=Razedreloads%2CChrisspinsslots%2CReloadsJP%2CReloads&to=9999-12-31&top=100",
                     { headers: { 'X-Referral-Key': API_KEY_RAZED_REF }, },
                 ).then(r => r.json());
@@ -71,15 +66,12 @@ export const casinos = {
                 this.data.datetime = new Date(Date.now()).toLocaleString();
                 this.leaderboard = r.data.map(u => ({
                     casino_user_id: u.username,
-                    // total_wager: this.data?.rate * u.wagered,
                     total_revenue: parseFloat(this.data?.rate) * parseFloat(u.wagered)
                 }));
             } catch (e) { console.log(e) }
         };
 
         sendBalance = async (receiver_username, amount, balanceType) => {
-            console.log({ amount, receiver_username });
-
             return await fetch('https://api.razed.com/player/api/v1/tips',
                 {
                     method: 'POST', headers: { Authorization: 'Bearer ' + API_KEY_RAZED },
@@ -95,7 +87,6 @@ export const casinos = {
     }().init())
 }
 export const refreshLeaderboardData = async () => {
-    console.log('refreshing leaderboard data', new Date(Date.now()).toLocaleString(),)
     for await (const casino of Object.values(casinos)) {
         await casino.getLeaderboard();
     }
