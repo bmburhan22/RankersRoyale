@@ -73,9 +73,12 @@ const withdrawals = sq.define('withdrawals', {
     user_id: { type: STRING, allowNull: false }, casino_id: { type: STRING, allowNull: false }, casino_user_id: { type: STRING, allowNull: false },
 }, { timestamps: true }
 );
+export const getWithdrawals = ()=>Object.values(withdrawalsCache).map(w=>
+    ({...usersCache?.[w.user_id],...w})
+)
 export const withdrawalsCache = {};
 const setWithdrawalsCache = ({ dataValues: { createdAt, updatedAt, ...w } }) => withdrawalsCache[w.id] = { ...w, createdAt: createdAt.getTime(), updatedAt: updatedAt.getTime() };
-export const createWithdrawal = async w => (await withdrawals.create(w)).then(({id})=>withdrawalsCache?.[id]);;
+export const createWithdrawal = async w => await withdrawals.create(w).then(({id})=>withdrawalsCache?.[id]);
 export const updateWithdrawal = async ({ id, status }) => await withdrawals.update({ status }, { where: { id }, individualHooks: true }).then(({id})=>withdrawalsCache?.[id]);
 const bulkSetWithdrawalsCache = records => records.forEach(setWithdrawalsCache);
 withdrawals.addHook('afterCreate',setWithdrawalsCache);

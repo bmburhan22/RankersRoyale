@@ -12,11 +12,12 @@ import https from 'https';
 import {
     casinoUsers, createWithdrawal, deleteCasinoUser,
     getByCasinoUserId, getCasinoUser,
+    getWithdrawals,
     setCasinoUser, setSettings,
     settingsCache, setUser, updateWithdrawal, usersCache, withdrawalsCache
 } from './utils/db.js';
 import cron from 'node-cron';
-import { casinos, refreshLeaderboardData } from './utils/casinos.js';
+import { balances, casinos, refreshLeaderboardData } from './utils/casinos.js';
 import { readFileSync } from 'fs';
 dotenv.config();
 const { PORT, JWT_SECRET, DISCORD_ADMIN_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET } = process.env;
@@ -79,7 +80,9 @@ const memberToUser = (member) => {
     const { username, discriminator, globalName, id: userId } = member.user;
     const { displayAvatarURL, nickname, isAdmin } = member.toJSON();
 
-    return { isAdmin, username, discriminator, globalName, nickname, displayAvatarURL, userId };
+    return { isAdmin, username, discriminator, globalName, nickname, displayAvatarURL, userId, casinoUserIds:
+        Object.keys(casinos).reduce((obj, casino_id)=>{obj[casino_id]=getCasinoUser({user_id:userId,casino_id}) ; return obj;},{})
+     };
 }
 app.get(ROUTES.ME, authenticate, errorHandlerBuilder(async (req, res) => res.json(memberToUser(res.locals.member))));
 
@@ -131,9 +134,8 @@ app.post(ROUTES.CASINOS, authenticate, errorHandlerBuilder(async ({ body: { casi
     const user_casino = await setCasinoUser({ user_id: res.locals.member.id, casino_id, casino_user_id });
 
     return res.json({user_casino,
-            leaderboard:res.json(getCasinoLeaderboards([casino_id]).casinos[casino_id])
-        
-     });
+            leaderboard:getCasinoLeaderboards([casino_id]).casinos[casino_id]
+        });
 }));
 const round = val => Math.floor(parseFloat(val) * 100) / 100;
 const transaction = async ({ user_id, casinoId, amount, balanceType }) => {
@@ -143,10 +145,13 @@ const transaction = async ({ user_id, casinoId, amount, balanceType }) => {
     const { casino_id, total_reward, casino_user_id } = getCasinoUser({ user_id, casino_id: casinoId });
 
     if (total_reward < amount) throw new ErrorCode(400, 'Insufficient funds');
+    
     const w = await createWithdrawal({ casino_id: casinoId, casino_user_id, user_id, amount, balance: total_reward - amount, balance_type: balanceType });
+    
     if (w) {
         await setCasinoUser({ casino_id, user_id, total_reward: total_reward - amount });
      }
+     
     return w;
 }
 
@@ -175,15 +180,16 @@ const approveWithdrawals = async () => {
         );
     }
 }
-app.get(ROUTES.WITHDRAWALS, [authenticate, authenticateAdmin], errorHandlerBuilder(async (req, res) => res.json({
-    transactions: Object.values(withdrawalsCache)
-})));
+app.get(ROUTES.WITHDRAWALS, [authenticate, authenticateAdmin], errorHandlerBuilder(async (req, res) => res.json(
+    {transactions: getWithdrawals(), balances:balances()}
+)));
 app.post(ROUTES.WITHDRAWALS, [authenticate, authenticateAdmin], errorHandlerBuilder(async ({ body: { wid, approve } }, res) => {
     if (!withdrawalsCache[wid]) throw new ErrorCode(400, 'Transaction not found');
     if (['approved', 'rejected'].includes(withdrawalsCache[wid]?.status)) throw new ErrorCode(400, 'Transaction found to be ' + withdrawalsCache[wid]?.status);
     if (approve == null) throw new ErrorCode(400, 'Specify approval true/false');
     await handleWithdrawal(withdrawalsCache[wid], approve);
-    return res.json({transactions: Object.values(withdrawalsCache)});
+    return res.json(
+        {transactions: getWithdrawals(), balances:balances()});
 }));
 
 app.post(ROUTES.CLAIM_REWARD, authenticate, errorHandlerBuilder(async (req, res) => res.json(await transaction({ ...req.body, user_id: res.locals.member.id, }))));

@@ -34,13 +34,14 @@ export const casinos = {
                 { destinationUserId, value: value * this.data.inverseRate, balanceType }, { headers: { 'x-500-auth': API_KEY_500 }, })
                 .then(r => ({ success: true, ...r.data }))
                 .catch(err => { console.log(err); return { ...err.response.data, success: false } })
+                .finally(async d=>{await this.getBalance();return d;})
                 ;
         };
         getBalance = async () => await axios.get('https://500.casino/api/boot', { headers: { 'x-500-auth': API_KEY_500 }, })
             .then(r => {
                 const balances = JSON.parse(r.data?.userData?.balances);
                 Object.keys(balances).forEach(b => balances[b] = (this.data.rate * balances[b]))
-                return balances;
+                this.balances=balances;
             })
             .catch(err => { console.log(err); return err });
 
@@ -89,6 +90,7 @@ export const casinos = {
             )
                 .then(async r => ({ success: true, ...await r.json() }))
                 .catch(err => { console.log(err); return { ...err, success: false } })
+                .finally(async d=>{await this.getBalance();return d;})
 
                 ;
         };
@@ -96,7 +98,8 @@ export const casinos = {
             { headers: { Authorization: 'Bearer ' + API_KEY_RAZED } },
         )
             .then(async r => await r.json())
-            .then(d => ({ usd: parseFloat(d?.[0]?.balance) }))
+            .then(d => {this.balances={ usd: parseFloat(d?.[0]?.balance) };
+        })
             .catch(err => { console.log(err); return err })
 
             ;
@@ -106,7 +109,9 @@ export const casinos = {
 export const refreshLeaderboardData = async () => {
     for await (const casino of Object.values(casinos)) {
         await casino.getLeaderboard();
+        await casino.getBalance();
     }
 }
+export const balances=()=>Object.entries(casinos).reduce((b,[casinoId,casino])=>{if (casino.data.allowWithdraw) b[casinoId]=casino.balances; return b; },{})
 refreshLeaderboardData();
 cron.schedule('* * * * *', refreshLeaderboardData);

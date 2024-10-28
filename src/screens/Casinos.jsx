@@ -9,72 +9,43 @@ const casinoIds = ['razed', '500casino'];
 const Casinos = () => {
   const [params, setParams] = useSearchParams();
   const casinoId = params.get('casino_id');
-  const { post, get, userId } = useAuth();
+  const { post, get, userId, casinoUserIds } = useAuth();
   const [inputData, setInputData] = useState();
   const [leaderBoard, setLeaderboard] = useState({});
   const [amount, setAmount] = useState(0);
   const [balanceType, setBalanceType] = useState('usdt');
-
-
-
-  const { casino_user } = leaderBoard?.leaderboard?.find(u => u.user_id == userId) ?? {};
-  const { total_reward } = casino_user ?? {};
-  // const [items, setItems] = useState([]);
-  // const getShopItems = async () => await get(ROUTES.SHOP).then(r => { setItems(r.data.items); setCasinoWallets(r.data.casinoWallets) });
+  const [casinoUser,setCasinoUser] = useState();
+  console.log({casinoUserIds, casinoUser});
+ const {total_reward } = casinoUser??{};
   const getLeadboard = async () => {
     const res = await get(ROUTES.CASINOS+(!casinoId?'':`?casino_id=${casinoId}`));
-    if (res.status != 200) { setLeaderboard({}); return; }
-    setLeaderboard(res.data);
+    setLeaderboard(res?.data);
   }
 
-  const setCasinoUserId = (casinoUserId) => post(ROUTES.CASINOS, casinoUserId);
+  const setCasinoUserId =async (casinoUserId) =>await post(ROUTES.CASINOS, casinoUserId);
 
-  const sendBalance = async () => await post(ROUTES.CLAIM_REWARD, { amount, balanceType, casinoId }).catch(alert);
-  // const redeemItem = async ({ item_id, minAmount, maxAmount }) => await post(ROUTES.BUY, { item_id, casinoId, balanceType }).catch(alert);
-
+  const sendBalance = async () => await post(ROUTES.CLAIM_REWARD, { amount, balanceType, casinoId }).catch(alert)
+  .then(r=> {if (!r.data.err) setCasinoUser(cu=> ({...cu,total_reward:r?.data?.balance}));})//TODO: if fails dont update balance
+  
   useEffect(() => {
     if (!casinoIds.includes(casinoId)) setParams();
-
     getLeadboard();
-
-    // getShopItems();
-  }, [casinoId]);
+  }, [casinoId]); //TODO: when casinoID changes (page changed to total/razed/500) identify current user 
+  
+  useEffect(()=>{
+    setCasinoUser(casinoUserIds?.[casinoId]);
+  },[casinoId, casinoUserIds])
   return (
     <Container>
-
-
-
       <CssBaseline />
       <Navbar />
       <div style={{ marginTop: 100 }}>
-        {/* <Button label='Total' variant='contained'  onClick={() => {setParams()}}>TOTAL</Button> */}
         <Tabs value={casinoId ?? ''} onChange={(_, casino_id) => { console.log(casino_id); !casino_id?setParams():setParams({ casino_id }) }}>
           {...['', ...casinoIds].map(c =>
             <Tab label={c || 'Total'} value={c} />
           )}
-
         </Tabs>
-        <> {/*
-        <div>
-          <h3>TOTAL LEADERBOARD</h3>
-          <DataGrid getRowId={({ user_id }) => user_id}
-            columns={[
-              { field: 'user_id' },
-              { field: 'username' },
-              // { field: 'wager' },
-              // { field: 'total_wager' },
-              // { field: 'wagePerPoint' },
-              // { field: 'points' },
-              // { field: 'total_points' },
-              { field: 'revenue' },
-              { field: 'total_revenue' },
-              { field: 'reward' },
-              { field: 'total_reward' },
-            ]}
-            rows={Object.values(leaderBoard.total).map(rec => ({ ...rec, ...rec.user }))}
-          />
-        </div> */}
-        </>
+     
         <div>
 
           {!casinoIds.includes(casinoId) ? <></> : <div>
@@ -89,7 +60,8 @@ const Casinos = () => {
             <br />
             inverseRate: {leaderBoard.inverseRate}
             <br />
-
+            casinoUserId: {casinoUser?.casino_user_id}
+            <br />
             <TextField label={casinoId + ' username'} variant='outlined' onChange={e => setInputData(v => { return { ...v, [casinoId]: e.target.value } })} />
             <Button variant='contained' onClick={() => setCasinoUserId({ casino_id: casinoId, casino_user_id: inputData[casinoId] })}>Submit</Button>
 
@@ -139,28 +111,7 @@ const Casinos = () => {
               </div> : <></>
           }
         </>
-        <>
-          {/* 
-        <Divider variant="fullWidth" flexItem/>
-
-        <DataGrid getRowId={({ item_id }) => item_id}
-          rows={items}
-          columns={[
-            { field: 'item_id' },
-            { field: 'price', },
-            { field: 'minAmount', },
-            { field: 'maxAmount', },
-            { field: 'desc', },
-            {
-              field: 'actions',
-              type: 'actions',
-              getActions: (params) => [
-                <GridActionsCellItem icon={<GridAddIcon />} onClick={() => redeemItem(params.row)} label="Redeem" />]
-            },
-          ]}
-        /> */}
-        </>
-
+ 
       </div>
     </Container>
   );
