@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "npm run build && node ./index",
-    "test": "npm run build && nodemon server",
+    "test": "npm run build && nodemon",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",

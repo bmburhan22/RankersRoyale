@@ -25,7 +25,10 @@ const app = express();
 const VITE_PATH = path.join(path.resolve(), 'dist');
 app.use(express.static(VITE_PATH, { index: false }));
 
-app.use(cors());
+app.use(cors({ 
+    credentials:true,
+    origin: true, 
+}));
 app.use(json());
 app.use(cookieParser());
 
@@ -270,4 +273,4 @@ app.get(CLIENT_ROUTES, errorHandlerBuilder(async (req, res) => res.sendFile(path
 app.get('*', errorHandlerBuilder((req, res) => res.redirect(ROUTES.HOME)));
 
 const server = https.createServer({ key: readFileSync('./certs/key.pem'), cert: readFileSync('./certs/cert.pem') }, app)
-server.listen(PORT);
+console.log(server.listen(PORT).address());

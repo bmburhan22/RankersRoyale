@@ -1,5 +1,6 @@
 import { createContext, useState, useContext, useLayoutEffect } from 'react';
 import axios from "axios";
+axios.defaults.withCredentials = true;
 import Cookie from 'js-cookie';
 import { ROUTES } from '../../utils/routes.js';
 import { useNavigate } from 'react-router-dom';
