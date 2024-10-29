@@ -25,9 +25,9 @@ const app = express();
 const VITE_PATH = path.join(path.resolve(), 'dist');
 app.use(express.static(VITE_PATH, { index: false }));
 
-app.use(cors({ 
-    credentials:true,
-    origin: true, 
+app.use(cors({
+    credentials: true,
+    origin: true,
 }));
 app.use(json());
 app.use(cookieParser());
@@ -83,9 +83,10 @@ const memberToUser = (member) => {
     const { username, discriminator, globalName, id: userId } = member.user;
     const { displayAvatarURL, nickname, isAdmin } = member.toJSON();
 
-    return { isAdmin, username, discriminator, globalName, nickname, displayAvatarURL, userId, casinoUserIds:
-        Object.keys(casinos).reduce((obj, casino_id)=>{obj[casino_id]=getCasinoUser({user_id:userId,casino_id}) ; return obj;},{})
-     };
+    return {
+        isAdmin, username, discriminator, globalName, nickname, displayAvatarURL, userId, casinoUserIds:
+            Object.keys(casinos).reduce((obj, casino_id) => { obj[casino_id] = getCasinoUser({ user_id: userId, casino_id }); return obj; }, {})
+    };
 }
 app.get(ROUTES.ME, authenticate, errorHandlerBuilder(async (req, res) => res.json(memberToUser(res.locals.member))));
 
@@ -136,25 +137,27 @@ app.post(ROUTES.CASINOS, authenticate, errorHandlerBuilder(async ({ body: { casi
     if (getByCasinoUserId(casino_user_id)) throw new ErrorCode(403, 'Casino ID already linked');
     const user_casino = await setCasinoUser({ user_id: res.locals.member.id, casino_id, casino_user_id });
 
-    return res.json({user_casino,
-            leaderboard:getCasinoLeaderboards([casino_id]).casinos[casino_id]
-        });
+    return res.json({
+        user_casino,
+        leaderboard: getCasinoLeaderboards([casino_id]).casinos[casino_id]
+    });
 }));
 const round = val => Math.floor(parseFloat(val) * 100) / 100;
 const transaction = async ({ user_id, casinoId, amount, balanceType }) => {
     amount = round(amount);
+    if (isNaN(amount)) throw new ErrorCode(400, 'Redeem amount invalid');
     if (amount > 100) throw new ErrorCode(400, 'Redeem amount must not be more than 100');
     if (amount < 0.01) throw new ErrorCode(400, 'Redeem amount must be atleast 0.01');
     const { casino_id, total_reward, casino_user_id } = getCasinoUser({ user_id, casino_id: casinoId });
 
     if (total_reward < amount) throw new ErrorCode(400, 'Insufficient funds');
-    
+
     const w = await createWithdrawal({ casino_id: casinoId, casino_user_id, user_id, amount, balance: total_reward - amount, balance_type: balanceType });
-    
+
     if (w) {
         await setCasinoUser({ casino_id, user_id, total_reward: total_reward - amount });
-     }
-     
+    }
+
     return w;
 }
 
@@ -168,12 +171,12 @@ const handleWithdrawal = async ({ id, user_id, casino_id, casino_user_id, balanc
     if (!approve) {
         const { total_reward } = getCasinoUser({ casino_id, user_id });
         await setCasinoUser({ casino_id, user_id, total_reward: total_reward + amount });
-      }
+    }
     return await updateWithdrawal({
         id,
         status: approve == null ? 'pending' : approve ? 'approved' : 'rejected'
     })
-   
+
 
 }
 const approveWithdrawals = async () => {
@@ -184,7 +187,7 @@ const approveWithdrawals = async () => {
     }
 }
 app.get(ROUTES.WITHDRAWALS, [authenticate, authenticateAdmin], errorHandlerBuilder(async (req, res) => res.json(
-    {transactions: getWithdrawals(), balances:balances()}
+    { transactions: getWithdrawals(), balances: balances() }
 )));
 app.post(ROUTES.WITHDRAWALS, [authenticate, authenticateAdmin], errorHandlerBuilder(async ({ body: { wid, approve } }, res) => {
     if (!withdrawalsCache[wid]) throw new ErrorCode(400, 'Transaction not found');
@@ -192,7 +195,7 @@ app.post(ROUTES.WITHDRAWALS, [authenticate, authenticateAdmin], errorHandlerBuil
     if (approve == null) throw new ErrorCode(400, 'Specify approval true/false');
     await handleWithdrawal(withdrawalsCache[wid], approve);
     return res.json(
-        {transactions: getWithdrawals(), balances:balances()});
+        { transactions: getWithdrawals(), balances: balances() });
 }));
 
 app.post(ROUTES.CLAIM_REWARD, authenticate, errorHandlerBuilder(async (req, res) => res.json(await transaction({ ...req.body, user_id: res.locals.member.id, }))));
@@ -220,7 +223,7 @@ app.post(ROUTES.MEMBERS, [authenticate, authenticateAdmin], errorHandlerBuilder(
 }));
 app.delete(ROUTES.MEMBERS, [authenticate, authenticateAdmin], errorHandlerBuilder(
     async ({ body: { user_id, casino_id } }, res) => res.json(
-        await deleteCasinoUser({ user_id, casino_id }).then(()=>casinoUsers())
+        await deleteCasinoUser({ user_id, casino_id }).then(() => casinoUsers())
     )
 
 ));
@@ -228,7 +231,7 @@ app.delete(ROUTES.MEMBERS, [authenticate, authenticateAdmin], errorHandlerBuilde
 const refreshRevenue = async () => {
     await refreshLeaderboardData();
     for await (let casinoData of Object.values(getCasinoLeaderboards().casinos)) {
-        for await (let { total_revenue,  reward, casino_user: { casino_id, total_reward, user_id, curr_revenue_checkpoint, prev_revenue_checkpoint } } of casinoData.leaderboard) {
+        for await (let { total_revenue, reward, casino_user: { casino_id, total_reward, user_id, curr_revenue_checkpoint, prev_revenue_checkpoint } } of casinoData.leaderboard) {
             await setCasinoUser({
                 casino_id, user_id,
                 prev_revenue_checkpoint: curr_revenue_checkpoint ?? prev_revenue_checkpoint,
@@ -243,7 +246,7 @@ const refreshRevenue = async () => {
 }
 
 
-app.post(ROUTES.REFRESH_REVENUE, [authenticate, authenticateAdmin], errorHandlerBuilder(async (req, res) =>res.json(await refreshRevenue().then(()=>casinoUsers()) )));
+app.post(ROUTES.REFRESH_REVENUE, [authenticate, authenticateAdmin], errorHandlerBuilder(async (req, res) => res.json(await refreshRevenue().then(() => casinoUsers()))));
 
 let task;
 const scheduleTask = async () => {

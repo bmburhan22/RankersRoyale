@@ -19,13 +19,13 @@ export const casinos = {
         getLeaderboard = async () => {
             try {
                 const r = await axios.post("https://500.casino/api/rewards/affiliate-users",
-                    { sorting: { totalPlayed: -1 } }, { headers: { 'x-500-auth': API_KEY_500 } }
+                    { sorting: { totalRevenue: -1 } }, { headers: { 'x-500-auth': API_KEY_500 } }
                 );
                 this.data.datetime = new Date(Date.now()).toLocaleString();
 
                 this.leaderboard = r.data.results.map(u => ({
                     casino_user_id: u._id,
-                    total_revenue: parseFloat(this.data?.rate) * parseFloat(u.totalPlayed),
+                    total_revenue: parseFloat(this.data?.rate) * parseFloat(u.totalRevenue),
                 }));
             } catch (e) { console.log(e) }
         };
@@ -59,7 +59,7 @@ export const casinos = {
             .then(r => r.json())
             .then(async ({ referral_code: referralCode }) => {
                 const referralLink = "https://www.razed.com/signup/?raf=" + referralCode
-                this.data = { allowWithdraw: false, rate: 1, currencies: ['usd'], inverseRate: 1, referralCode, referralLink }
+                this.data = { allowWithdraw: true, rate: 1, currencies: ['usd'], inverseRate: 1, referralCode, referralLink }
                 await this.getLeaderboard();
                 return this;
             }).catch(c => {

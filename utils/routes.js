@@ -9,12 +9,8 @@ export const ROUTES ={
     MEMBERS: '/api/members',
     CASINOS: '/api/casinos',
     REFRESH_REVENUE: '/api/refresh-revenue',
-    // RESET_LEADERBOARD: '/api/reset-leaderboard',
-    // REDEEM: '/api/redeem',
-    // BUY:'/api/buy',
     
     SETTINGS:'/api/settings',
-    // SHOP:'/api/shop',
     CLAIM_REWARD: '/api/claim-reward',
     WITHDRAWALS: '/api/withdrawals',
 }
