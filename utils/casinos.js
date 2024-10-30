@@ -24,15 +24,14 @@ export const casinos = {
         getLeaderboard = async () => {
             try {
                 const r = await axios.post("https://500.casino/api/rewards/affiliate-users",
-                    { sorting: { totalRevenue: -1 } },
+                    { sorting: { totalPlayed: -1 } },
                     { headers: this.headers },
                 );
                 this.data.datetime = new Date(Date.now()).toLocaleString();
-
                 this.leaderboard = r.data.results.map(u => ({
                     casino_user_id: u._id,
                     total_revenue: parseFloat(this.data?.rate) * parseFloat(u.totalRevenue),
-                    total_wager: parseFloat(this.data?.rate) * parseFloat(u.totalWager),
+                    total_wager: parseFloat(this.data?.rate) * parseFloat(u.totalPlayed),
                 }));
             } catch (e) { console.log(e) }
         };

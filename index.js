@@ -96,30 +96,30 @@ const getCasinoLeaderboards = (casinoIds = Object.keys(casinos)) => {
     const userIds = bot.verifiedMembers.map(m => m.id);
     for (let casino_id of casinoIds) {
         leaderboards.casinos[casino_id] = casinos[casino_id].data;
-        let casinoMembers = casinos[casino_id].leaderboard;
-        for (let c of casinoMembers) {
-            c.casino_user = getByCasinoUserId(c.casino_user_id);
-            c.revenue = calcRevenue(c.total_revenue, c.casino_user?.curr_revenue_checkpoint)
-            c.wager = calcRevenue(c.total_wager, c.casino_user?.curr_wager_checkpoint)
-            c.reward = round(c.revenue * parseFloat(settingsCache.revenueSharePercent));
-
-            c.user_id = c.casino_user?.user_id;
-            c.user = userIds.includes(c.user_id) ? usersCache[c.user_id] : null;
+        let casinoMembers = casinos[casino_id].leaderboard;//TODO: casinoMembers is not a copy
+        for (let c=0;c<casinoMembers.length;c++) {
+            casinoMembers[c] = {...casinoMembers[c],...getByCasinoUserId(casinoMembers[c].casino_user_id)};
+            if (userIds.includes(casinoMembers[c].user_id)) casinoMembers[c] = {...casinoMembers[c] , ...usersCache[casinoMembers[c].user_id]};
+            let cu = casinoMembers[c];
+            cu.revenue = calcRevenue(cu.total_revenue, cu?.curr_revenue_checkpoint)
+            cu.wager = calcRevenue(cu.total_wager, cu?.curr_wager_checkpoint)
+            cu.reward = round(cu.revenue * parseFloat(settingsCache.revenueSharePercent));
+            
 
             if (casinoIds.length > 1) {
-                if (leaderboards.total[c.user_id]) {
-                    leaderboards.total[c.user_id].revenue += c.revenue;
-                    leaderboards.total[c.user_id].wager += c.wager;
-                    leaderboards.total[c.user_id].reward += c.reward;
+                if (leaderboards.total[cu.user_id]) {
+                    leaderboards.total[cu.user_id].revenue += cu.revenue;
+                    leaderboards.total[cu.user_id].wager += cu.wager;
+                    leaderboards.total[cu.user_id].reward += cu.reward;
                 }
-                else if (c.user_id) {
-                    const { revenue, wager, reward, user, user_id ,} = c;
-                    leaderboards.total[c.user_id] = { revenue,wager, reward, user, user_id }
+                else if (cu.user_id) {
+                    const { revenue, wager, reward,  user_id , username,discriminator} = cu;
+                    leaderboards.total[cu.user_id] = { revenue,wager, reward, user_id ,username,discriminator}
 
                 }
             }
         }
-        leaderboards.casinos[casino_id].leaderboard = casinoMembers.filter(cu => cu.casino_user != null && cu.user != null).toSorted((a, b) => b.wager - a.wager)
+        leaderboards.casinos[casino_id].leaderboard = casinoMembers.filter(cu => cu.user_id != null).toSorted((a, b) => b.wager - a.wager)
     }
     leaderboards.total = Object.values(leaderboards.total).toSorted((a, b) => b.wager - a.wager)
     return leaderboards;
@@ -228,7 +228,7 @@ app.delete(ROUTES.MEMBERS, [authenticate, authenticateAdmin], errorHandlerBuilde
 const refreshRevenue = async () => {
     await refreshLeaderboardData();
     for await (let casinoData of Object.values(getCasinoLeaderboards().casinos)) {
-        for await (let { total_revenue, total_wager, reward, casino_user: { casino_id, total_reward, user_id, curr_revenue_checkpoint, prev_revenue_checkpoint, curr_wager_checkpoint, prev_wager_checkpoint } } of casinoData.leaderboard) {
+        for await (let { total_revenue, total_wager, reward, casino_id, total_reward, user_id, curr_revenue_checkpoint, prev_revenue_checkpoint, curr_wager_checkpoint, prev_wager_checkpoint  } of casinoData.leaderboard) {
             await setCasinoUser({
                 casino_id, user_id,
                 prev_revenue_checkpoint: curr_revenue_checkpoint ?? prev_revenue_checkpoint,

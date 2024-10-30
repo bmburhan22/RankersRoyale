@@ -83,8 +83,7 @@ const Casinos = () => {
             ]
               .filter(({ field }) => casinoIds.includes(casinoId) ? true : ['reward','revenue', 'wager', 'user_id', 'username'].includes(field))
             }
-            rows={leaderBoard?.leaderboard?.map(rec => ({ ...rec, ...rec.user, ...rec.casino_user }))//TODO: dont spread casino_user
-            }
+            rows={leaderBoard?.leaderboard}
           />
 
         </div>
