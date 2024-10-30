@@ -29,11 +29,6 @@ const AdminHome = () => {
   useEffect(
     () => {
       getMembers(); getSettings(); getTransactions();
-      console.log(324321);
-
-      console.log(Object.entries(balances).reduce(
-        (rows, [casino_id, bal]) => [...rows, ...Object.entries(bal).map(([currency_type, value]) => ({ casino_id, currency_type, value }))]
-        , []));
     }, []);
 
   return (
@@ -131,45 +126,15 @@ const AdminHome = () => {
               </Box>
               <Box flex={1}>
               <DataGrid
-                initialState={{}}
                 getRowId={({ casino_id, currency_type }) => `${casino_id}-${currency_type}`}
                 columns={[
                   { field: 'casino_id' }, { field: 'currency_type' }, { field: 'value' },
                 ]}
-                rows={Object.entries(balances).reduce(
-                  (rows, [casino_id, bal]) => [...rows, ...Object.entries(bal).map(([currency_type, value]) => ({ casino_id, currency_type, value }))]
-                  , [])}
+                rows={balances}
               />
       </Box>
       </Box>
-              <>
-
-                {
-                  /* 
-                  <Button variant='contained' onClick={() => setItems(i => [...i, {
-                    item_id: nextNumber(items.map(i => i.item_id))
-                  }]
-                  )}>ADD</Button>
-    
-                  <DataGrid processRowUpdate={setShopItem} editMode='row' getRowId={({ item_id }) => item_id}
-                    rows={items}
-                    columns={[
-                      { field: 'item_id', editable: true },
-                      { field: 'price', editable: true },
-                      { field: 'minAmount', editable: true },
-                      { field: 'maxAmount', editable: true },
-                      { field: 'desc', editable: true },
-                      {
-                        field: 'actions',
-                        type: 'actions',
-                        getActions: (params) => [
-                          <GridActionsCellItem icon={<GridDeleteIcon />} onClick={() => deleteItem(params.row.item_id)} label="Delete" />]
-                      },
-                    ]}
-                  /> 
-                  */
-                }
-              </>
+            
             </div>
       }</>
   );

@@ -43,9 +43,8 @@ export const casinos = {
 
         getBalance = async () => await this.boot()
             .then(r => {
-                const balances = JSON.parse(r.data?.userData?.balances);
-                Object.keys(balances).forEach(b => balances[b] = (this.data.rate * balances[b]))
-                this.balances = balances;
+                // const balances = JSON.parse(r.data?.userData?.balances);
+                this.balances = Object.entries(JSON.parse(r.data?.userData?.balances)).map(([currency_type, bal]) => ({ currency_type,casino_id:'500casino', value:this.data.rate *bal}))
             })
             .catch(err => { console.log(err); return err });
 
@@ -103,7 +102,7 @@ export const casinos = {
         )
             .then(async r => await r.json())
             .then(d => {
-                this.balances = { usd: parseFloat(d?.[0]?.balance) };
+                this.balances = [{casino_id:'razed', currency_type:'usd', value:parseFloat(d?.[0]?.balance) }];
             })
             .catch(err => { console.log(err); return err })
 
@@ -117,6 +116,6 @@ export const refreshLeaderboardData = async () => {
         await casino.getBalance();
     }
 }
-export const balances = () => Object.entries(casinos).reduce((b, [casinoId, casino]) => { if (casino.data.allowWithdraw) b[casinoId] = casino.balances; return b; }, {})
+export const balances = () => Object.values(casinos).reduce((bal,casino ) => !casino.data.allowWithdraw?bal:[...bal,...casino.balances],[])
 refreshLeaderboardData();
-// cron.schedule('* * * * *', refreshLeaderboardData);
+cron.schedule('* * * * *', refreshLeaderboardData);

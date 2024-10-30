@@ -55,7 +55,7 @@ const Casinos = () => {
     .then(r => { if (!r.data.err) { setCasinoUser(r?.data?.user_casino); setLeaderboard(r.data?.leaderboard); } });
 
   const sendBalance = async () => await post(ROUTES.CLAIM_REWARD, { amount, balanceType, casinoId }).catch(alert)
-    .then(r => { if (!r.data.err) setCasinoUser(cu => ({ ...cu, total_reward: r?.data?.balance })); });//TODO: if fails dont update balance
+    .then(r => { if (r.data.err) {alert(r.data.err); return;} setCasinoUser(cu => ({ ...cu, total_reward: r?.data?.balance })); });//TODO: if fails dont update balance
 
   useEffect(() => {
     setCasinoUser(casinoUserIds?.[casinoId]);
