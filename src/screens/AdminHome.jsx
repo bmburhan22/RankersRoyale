@@ -73,6 +73,8 @@ const AdminHome = () => {
                   { field: "casino_user_id", editable: true },
                   { field: "prev_revenue_checkpoint", editable: true },
                   { field: "curr_revenue_checkpoint", editable: true },
+                  { field: "prev_wager_checkpoint", editable: true },
+                  { field: "curr_wager_checkpoint", editable: true },
                   { field: "total_reward", editable: true },
                   {
                     field: 'actions',
@@ -87,21 +89,19 @@ const AdminHome = () => {
               </>
               <Box display="flex" gap={2}>
               <Box flex={1}>
-              <DataGrid getRowId={({ id }) => id}
+              <DataGrid getRowId={({ wid }) => wid}
                 initialState={{
                   sorting: {
-                    sortModel: [{ field: 'id', sort: 'desc' }],
+                    sortModel: [{ field: 'wid', sort: 'desc' }],
                   },
                 }}
                 rows={transactions}
                 columns={[
-                  { field: 'id' },
+                  { field: 'wid' },
                   { field: 'amount' },
                   { field: 'balance' },
                   { field: 'balance_type' },
-                  {
-                    field: 'status',//   type: "singleSelect", valueOptions:['approved', 'rejected'], editable:({row:{status}})=>['approved', 'rejected'].includes(status)
-                  },
+                  {field: 'status',    },
                   { field: 'user_id' },
                   { field: 'casino_id' },
                   { field: 'casino_user_id' },
@@ -117,9 +117,9 @@ const AdminHome = () => {
                   {
                     field: 'actions', type: 'actions',
                     getActions: (params) => params.row.status != 'pending' ? [] : [
-                      <GridActionsCellItem icon={<GridCheckCircleIcon />} onClick={() => handleTransaction(params.row.id, true)} label="Approve" />
+                      <GridActionsCellItem icon={<GridCheckCircleIcon />} onClick={() => handleTransaction(params.row.wid, true)} label="Approve" />
                       ,
-                      <GridActionsCellItem icon={<GridCloseIcon />} onClick={() => handleTransaction(params.row.id, false)} label="Reject" />]
+                      <GridActionsCellItem icon={<GridCloseIcon />} onClick={() => handleTransaction(params.row.wid, false)} label="Reject" />]
                   },
                 ]}
               />

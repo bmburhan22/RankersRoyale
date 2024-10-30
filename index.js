@@ -74,9 +74,9 @@ app.get(REDIRECT, errorHandlerBuilder(async ({ query: { code } }, res) => {
         client_id, redirect_uri, code, client_secret: DISCORD_CLIENT_SECRET, grant_type: 'authorization_code',
     });
     const { data: { access_token } } = await axios.post(`${DISCORD_API}/oauth2/token`, params,);
-    const { data: { id, username, discriminator } } = await axios.get(`${DISCORD_API}/users/@me`, { headers: { 'Authorization': `Bearer ${access_token}`, } });
-    await setUser({ id, username, discriminator });
-    return res.cookie('token', jwt.sign(id, JWT_SECRET), { maxAge: 30 * 24 * 60 * 60 * 1000 }).redirect(ROUTES.HOME);
+    const { data: { id:user_id, username, discriminator } } = await axios.get(`${DISCORD_API}/users/@me`, { headers: { 'Authorization': `Bearer ${access_token}`, } });
+    await setUser({ user_id, username, discriminator });
+    return res.cookie('token', jwt.sign(user_id, JWT_SECRET), { maxAge: 30 * 24 * 60 * 60 * 1000 }).redirect(ROUTES.HOME);
 
 }));
 const memberToUser = (member) => {
@@ -100,34 +100,35 @@ const getCasinoLeaderboards = (casinoIds = Object.keys(casinos)) => {
         for (let c of casinoMembers) {
             c.casino_user = getByCasinoUserId(c.casino_user_id);
             c.revenue = calcRevenue(c.total_revenue, c.casino_user?.curr_revenue_checkpoint)
+            c.wager = calcRevenue(c.total_wager, c.casino_user?.curr_wager_checkpoint)
             c.reward = round(c.revenue * parseFloat(settingsCache.revenueSharePercent));
 
             c.user_id = c.casino_user?.user_id;
-
-
             c.user = userIds.includes(c.user_id) ? usersCache[c.user_id] : null;
+
             if (casinoIds.length > 1) {
                 if (leaderboards.total[c.user_id]) {
                     leaderboards.total[c.user_id].revenue += c.revenue;
+                    leaderboards.total[c.user_id].wager += c.wager;
                     leaderboards.total[c.user_id].reward += c.reward;
                 }
                 else if (c.user_id) {
-                    const { revenue, reward, user, user_id } = c;
-                    leaderboards.total[c.user_id] = { revenue, reward, user, user_id }
+                    const { revenue, wager, reward, user, user_id ,} = c;
+                    leaderboards.total[c.user_id] = { revenue,wager, reward, user, user_id }
 
                 }
             }
         }
-        leaderboards.casinos[casino_id].leaderboard = casinoMembers.filter(cu => cu.casino_user != null && cu.user != null).toSorted((a, b) => b.revenue - a.revenue)
+        leaderboards.casinos[casino_id].leaderboard = casinoMembers.filter(cu => cu.casino_user != null && cu.user != null).toSorted((a, b) => b.wager - a.wager)
     }
+    leaderboards.total = Object.values(leaderboards.total).toSorted((a, b) => b.wager - a.wager)
     return leaderboards;
 }
 app.get(ROUTES.CASINOS, errorHandlerBuilder(async ({ query: { casino_id } }, res) => {
     if (Object.keys(casinos).includes(casino_id))
         return res.json(getCasinoLeaderboards([casino_id]).casinos[casino_id]);
     return res.json({
-        leaderboard: Object.values(getCasinoLeaderboards().total)
-            .toSorted((a, b) => b.revenue - a.revenue)
+        leaderboard: getCasinoLeaderboards().total
     });
 }));
 
@@ -161,7 +162,7 @@ const transaction = async ({ user_id, casinoId, amount, balanceType }) => {
     return w;
 }
 
-const handleWithdrawal = async ({ id, user_id, casino_id, casino_user_id, balance_type, amount }, approve) => {
+const handleWithdrawal = async ({ wid, user_id, casino_id, casino_user_id, balance_type, amount }, approve) => {
     amount = parseFloat(amount);
     approve = approve && casinos[casino_id].data.allowWithdraw;
     if (approve) {
@@ -173,7 +174,7 @@ const handleWithdrawal = async ({ id, user_id, casino_id, casino_user_id, balanc
         await setCasinoUser({ casino_id, user_id, total_reward: total_reward + amount });
     }
     return await updateWithdrawal({
-        id,
+        wid,
         status: approve == null ? 'pending' : approve ? 'approved' : 'rejected'
     })
 
@@ -213,12 +214,8 @@ scheduleWithdrawTask();
 
 
 app.get(ROUTES.MEMBERS, [authenticate, authenticateAdmin], errorHandlerBuilder((req, res) => res.json(casinoUsers())));
-app.post(ROUTES.MEMBERS, [authenticate, authenticateAdmin], errorHandlerBuilder(async ({ body: { user_id, casino_id, casino_user_id,
-    curr_revenue_checkpoint, prev_revenue_checkpoint, total_reward } }, res) => {
-    const casinoUser = await setCasinoUser({
-        user_id, casino_user_id, casino_id,
-        curr_revenue_checkpoint, prev_revenue_checkpoint, total_reward
-    });
+app.post(ROUTES.MEMBERS, [authenticate, authenticateAdmin], errorHandlerBuilder(async ({ body: cu }, res) => {
+    const casinoUser = await setCasinoUser(cu);
     return res.json(casinoUsers());
 }));
 app.delete(ROUTES.MEMBERS, [authenticate, authenticateAdmin], errorHandlerBuilder(
@@ -231,11 +228,15 @@ app.delete(ROUTES.MEMBERS, [authenticate, authenticateAdmin], errorHandlerBuilde
 const refreshRevenue = async () => {
     await refreshLeaderboardData();
     for await (let casinoData of Object.values(getCasinoLeaderboards().casinos)) {
-        for await (let { total_revenue, reward, casino_user: { casino_id, total_reward, user_id, curr_revenue_checkpoint, prev_revenue_checkpoint } } of casinoData.leaderboard) {
+        for await (let { total_revenue, total_wager, reward, casino_user: { casino_id, total_reward, user_id, curr_revenue_checkpoint, prev_revenue_checkpoint, curr_wager_checkpoint, prev_wager_checkpoint } } of casinoData.leaderboard) {
             await setCasinoUser({
                 casino_id, user_id,
                 prev_revenue_checkpoint: curr_revenue_checkpoint ?? prev_revenue_checkpoint,
                 curr_revenue_checkpoint: total_revenue,
+                
+                prev_wager_checkpoint: curr_wager_checkpoint ?? prev_wager_checkpoint,
+                curr_wager_checkpoint: total_wager,
+
                 total_reward: total_reward + reward
             })
         }

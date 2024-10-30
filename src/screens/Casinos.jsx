@@ -6,36 +6,7 @@ import { ROUTES } from '../../utils/routes';
 import { Container, Tab, Tabs, CssBaseline, Box, TextField, Button, Divider, Select, MenuItem, InputLabel, setRef } from '@mui/material';
 import { DataGrid, GridActionsCellItem, GridAddIcon } from '@mui/x-data-grid';
 const casinoIds = ['razed', '500casino'];
-const sampleCasinoUserIds = {
-  "500casino": {
-    "user_id": "689933391352692897",
-    "casino_id": "500casino",
-    "casino_user_id": "66d40f94e3ca5498f5880993",
-    "prev_revenue_checkpoint": "5.00",
-    "curr_revenue_checkpoint": "5.00",
-    "total_reward": 2.13
-  },
-  "razed": {
-    "user_id": "689933391352692897",
-    "casino_id": "razed",
-    "casino_user_id": "suisui0804",
-    "prev_revenue_checkpoint": "79473.00",
-    "curr_revenue_checkpoint": "79473.00",
-    "total_reward": 947.3
-  }
-};
 
-const sampleLeaderboard = {
-  total: { "leaderboard": [{ "revenue": 5, "reward": 0.5, "user": { "id": "689933391352692897", "username": "casper.exe_2", "discriminator": "0" }, "user_id": "689933391352692897" }] },
-  '500casino': {
-    "allowWithdraw": true, "rate": 0.0006002400960384153, "currencies": ["bch", "btc", "doge", "eos", "eth", "ltc", "sol", "xlm", "xrp", "usdt", "usdc", "bnb", "trx", "avax", "matic", "ada"], "inverseRate": 1666, "referralCode": "REF63435AX7A89OU", "referralLink": "https://500.casino/r/REF63435AX7A89OU", "datetime": "28/10/2024, 7:32:00 pm",
-    "leaderboard": [
-      { "casino_user_id": "66d40f94e3ca5498f5880993", "total_revenue": 10, "casino_user": { "user_id": "689933391352692897", "casino_id": "500casino", "casino_user_id": "66d40f94e3ca5498f5880993", "prev_revenue_checkpoint": "5.00", "curr_revenue_checkpoint": "5.00", "total_reward": 2.13 }, "revenue": 5, "reward": 0.5, "user_id": "689933391352692897", "user": { "id": "689933391352692897", "username": "casper.exe_2", "discriminator": "0" } },
-      { "casino_user_id": "44d40f94e3ca5498f5880993", "total_revenue": 10, "casino_user": { "user_id": "790658457786384404", "casino_id": "500casino", "casino_user_id": "44d40f94e3ca5498f5880993", "prev_revenue_checkpoint": "6.00", "curr_revenue_checkpoint": "6.00", "total_reward": 5.13 }, "revenue": 6, "reward": 2.5, "user_id": "790658457786384404", "user": { "id": "790658457786384404", "username": "casper.exe_", "discriminator": "0" } },
-    ]
-  },
-  razed: { "allowWithdraw": false, "rate": 1, "currencies": ["usd"], "inverseRate": 1, "referralCode": "PasCal", "referralLink": "https://www.razed.com/signup/?raf=PasCal", "datetime": "28/10/2024, 7:33:01 pm", "leaderboard": [{ "casino_user_id": "suisui0804", "total_revenue": 79473, "casino_user": { "user_id": "689933391352692897", "casino_id": "razed", "casino_user_id": "suisui0804", "prev_revenue_checkpoint": "79473.00", "curr_revenue_checkpoint": "79473.00", "total_reward": 947.3 }, "revenue": 0, "reward": 0, "user_id": "689933391352692897", "user": { "id": "689933391352692897", "username": "casper.exe_2", "discriminator": "0" } }] },
-};
 const Casinos = () => {
   const [params, setParams] = useSearchParams();
   const casinoId = params.get('casino_id');
@@ -63,8 +34,6 @@ const Casinos = () => {
   useEffect(() => {
     if (!casinoIds.includes(casinoId)) setParams();
     getLeadboard();
-    // setCasinoUser(sampleCasinoUserIds[casinoId]);
-    // setLeaderboard(sampleLeaderboard[casinoIds.includes(casinoId) ? casinoId : 'total'])
   }, [casinoId]);
 
   return (
@@ -109,14 +78,12 @@ const Casinos = () => {
               { field: 'revenue' },
 
               { field: 'total_revenue' },
-              { field: 'prev_revenue_checkpoint' },
-              { field: 'curr_revenue_checkpoint' },
               { field: 'total_reward' },
 
             ]
-              .filter(({ field }) => casinoIds.includes(casinoId) ? true : ['reward', 'revenue', 'user_id', 'username'].includes(field))
+              .filter(({ field }) => casinoIds.includes(casinoId) ? true : ['reward','revenue', 'wager', 'user_id', 'username'].includes(field))
             }
-            rows={leaderBoard?.leaderboard?.map(rec => ({ ...rec, ...rec.user, ...rec.casino_user }))
+            rows={leaderBoard?.leaderboard?.map(rec => ({ ...rec, ...rec.user, ...rec.casino_user }))//TODO: dont spread casino_user
             }
           />
 

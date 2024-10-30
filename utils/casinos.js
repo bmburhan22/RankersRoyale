@@ -32,6 +32,7 @@ export const casinos = {
                 this.leaderboard = r.data.results.map(u => ({
                     casino_user_id: u._id,
                     total_revenue: parseFloat(this.data?.rate) * parseFloat(u.totalRevenue),
+                    total_wager: parseFloat(this.data?.rate) * parseFloat(u.totalWager),
                 }));
             } catch (e) { console.log(e) }
         };
@@ -78,7 +79,8 @@ export const casinos = {
                 this.data.datetime = new Date(Date.now()).toLocaleString();
                 this.leaderboard = r.data.map(u => ({
                     casino_user_id: u.username,
-                    total_revenue: parseFloat(this.data?.rate) * parseFloat(u.wagered)
+                    total_revenue: parseFloat(this.data?.rate) * parseFloat(u.wagered),
+                    total_wager: parseFloat(this.data?.rate) * parseFloat(u.wagered),
                 }));
             } catch (e) { console.log(e) }
         };

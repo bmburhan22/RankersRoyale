@@ -11,18 +11,22 @@ const users_casinos = sq.define('users_casinos',
     {
         user_id: { primaryKey: true, type: STRING, allowNull: false }, casino_id: { type: STRING, primaryKey: true, allowNull: false }, casino_user_id: { type: STRING },
         prev_revenue_checkpoint: { type: DECIMAL(1000, 2), defaultValue: null, allowNull: true }, curr_revenue_checkpoint: { type: DECIMAL(1000, 2), defaultValue: null, allowNull: true },
+        prev_wager_checkpoint: { type: DECIMAL(1000, 2), defaultValue: null, allowNull: true }, curr_wager_checkpoint: { type: DECIMAL(1000, 2), defaultValue: null, allowNull: true },
         total_reward: { type: DECIMAL(1000, 2), defaultValue: 0, allowNull: true },
     }
 );
 const usersCasinosCache = {};
 const usersCasinosKey = ({ casino_id, user_id }) => `${casino_id}-${user_id}`;
 export const getByCasinoUserId = casino_user_id => Object.values(usersCasinosCache).find(uc => uc.casino_user_id == casino_user_id);
-export const setCasinoUser = async ({ curr_revenue_checkpoint, prev_revenue_checkpoint, total_reward, ...cu }) => {
+export const setCasinoUser = async ({ curr_revenue_checkpoint, prev_revenue_checkpoint,curr_wager_checkpoint, prev_wager_checkpoint, total_reward, ...cu }) => {
     if (curr_revenue_checkpoint !== undefined) curr_revenue_checkpoint = isNaN(parseFloat(curr_revenue_checkpoint)) ? null : parseFloat(curr_revenue_checkpoint);
     if (prev_revenue_checkpoint !== undefined) prev_revenue_checkpoint = isNaN(parseFloat(prev_revenue_checkpoint)) ? null : parseFloat(prev_revenue_checkpoint);
+    if (curr_wager_checkpoint !== undefined) curr_wager_checkpoint = isNaN(parseFloat(curr_wager_checkpoint)) ? null : parseFloat(curr_wager_checkpoint);
+    if (prev_wager_checkpoint !== undefined) prev_wager_checkpoint = isNaN(parseFloat(prev_wager_checkpoint)) ? null : parseFloat(prev_wager_checkpoint);
+    
     if (total_reward !== undefined) total_reward = Number(total_reward);
-    await users_casinos.upsert({ ...cu, curr_revenue_checkpoint, prev_revenue_checkpoint, total_reward }, {
-        updateOnDuplicate: ['casino_user_id', 'prev_revenue_checkpoint', 'curr_revenue_checkpoint', 'total_reward'
+    await users_casinos.upsert({ ...cu, curr_revenue_checkpoint, prev_revenue_checkpoint, curr_wager_checkpoint, prev_wager_checkpoint, total_reward, total_reward }, {
+        updateOnDuplicate: ['casino_user_id', 'prev_revenue_checkpoint', 'curr_revenue_checkpoint','prev_wager_checkpoint', 'curr_wager_checkpoint', 'total_reward'
         ], returning: true
     });
     return getCasinoUser(cu);
@@ -37,11 +41,11 @@ users_casinos.addHook('afterUpsert', ([uc]) => setUsersCasinosCache(uc));
 users_casinos.addHook('afterDestroy', rec => delete usersCasinosCache[usersCasinosKey(rec)]);
 // =============USERS=================
 const users = sq.define('users',
-    { id: { primaryKey: true, type: STRING }, username: { type: STRING }, discriminator: { type: STRING }, }
+    { user_id: { primaryKey: true, type: STRING }, username: { type: STRING }, discriminator: { type: STRING }, }
 );
 export const usersCache = {};
-export const setUser = async ({ id, username, discriminator }) => await users.upsert({ id, username, discriminator }, { updateOnDuplicate: ['username', 'discriminator'], returning: true });
-const setUsersCache = user => usersCache[user.id] = user.dataValues; 
+export const setUser = async ({ user_id, username, discriminator }) => await users.upsert({ user_id, username, discriminator }, { updateOnDuplicate: ['username', 'discriminator'], returning: true });
+const setUsersCache = user => usersCache[user.user_id] = user.dataValues; 
 const bulkSetUsersCache = records => records.forEach(setUsersCache)
 users.addHook('afterUpsert', ([user]) => setUsersCache(user));
 
@@ -67,7 +71,7 @@ export const getSettingsNum = key => parseFloat(settingsCache[key]);
 
 // ============== Withdrawals ===========
 const withdrawals = sq.define('withdrawals', {
-    id: { primaryKey: true, type: INTEGER, unique: true, autoIncrement: true, autoIncrementIdentity: true, },
+    wid: { primaryKey: true, type: INTEGER, unique: true, autoIncrement: true, autoIncrementIdentity: true, },
     amount: { type: DECIMAL(1000, 2) }, balance: { type: DECIMAL(1000, 2) }, balance_type: { type: STRING },
     status: { type: STRING, allowNull: false, defaultValue: 'pending' },
     user_id: { type: STRING, allowNull: false }, casino_id: { type: STRING, allowNull: false }, casino_user_id: { type: STRING, allowNull: false },
@@ -77,9 +81,9 @@ export const getWithdrawals = ()=>Object.values(withdrawalsCache).map(w=>
     ({...usersCache?.[w.user_id],...w})
 )
 export const withdrawalsCache = {};
-const setWithdrawalsCache = ({ dataValues: { createdAt, updatedAt, ...w } }) => withdrawalsCache[w.id] = { ...w, createdAt: createdAt.getTime(), updatedAt: updatedAt.getTime() };
-export const createWithdrawal = async w => await withdrawals.create(w).then(({id})=>withdrawalsCache?.[id]);
-export const updateWithdrawal = async ({ id, status }) => await withdrawals.update({ status }, { where: { id }, individualHooks: true }).then(({id})=>withdrawalsCache?.[id]);
+const setWithdrawalsCache = ({ dataValues: { createdAt, updatedAt, ...w } }) => withdrawalsCache[w.wid] = { ...w, createdAt: createdAt.getTime(), updatedAt: updatedAt.getTime() };
+export const createWithdrawal = async w => await withdrawals.create(w).then(({wid})=>withdrawalsCache?.[wid]);
+export const updateWithdrawal = async ({ wid, status }) => await withdrawals.update({ status }, { where: { wid }, individualHooks: true }).then(({wid})=>withdrawalsCache?.[wid]);
 const bulkSetWithdrawalsCache = records => records.forEach(setWithdrawalsCache);
 withdrawals.addHook('afterCreate',setWithdrawalsCache);
 withdrawals.addHook('afterUpdate', setWithdrawalsCache);
