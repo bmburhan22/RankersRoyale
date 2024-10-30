@@ -2,12 +2,17 @@ import axios from "axios";
 import dotenv from 'dotenv';
 import cron from 'node-cron';
 dotenv.config();
-const { API_KEY_500, API_KEY_RAZED, API_KEY_RAZED_REF, } = process.env;
-
+const { API_KEY_500, API_KEY_RAZED, API_KEY_RAZED_REF, ZENROWS_KEY } = process.env;
+const zenapi = (method, url, headers, data) => axios({
+    method, headers, data, url: 'https://api.zenrows.com/v1/',
+    params: { url, 'apikey': ZENROWS_KEY, 'premium_proxy': true, 'proxy_country': 'de', 'custom_headers': true },
+});
 export const casinos = {
     '500casino': await (new class _500casino {
+        headers = { 'x-500-auth': API_KEY_500 }
+        boot = () => axios.get('https://500.casino/api/boot', { headers: this.headers })
         constructor() { this.data = {}; }
-        init = async () => await axios.get('https://500.casino/api/boot', { headers: { 'x-500-auth': API_KEY_500 } })
+        init = async () => await this.boot()
 
             .then(async ({ data: { userData: { referralCode }, siteSettings, balances: { crypto: currencies } } }) => {
                 const { rate, inverseRate } = siteSettings.currencyRates.bux.usd;
@@ -19,7 +24,8 @@ export const casinos = {
         getLeaderboard = async () => {
             try {
                 const r = await axios.post("https://500.casino/api/rewards/affiliate-users",
-                    { sorting: { totalRevenue: -1 } }, { headers: { 'x-500-auth': API_KEY_500 } }
+                    { sorting: { totalRevenue: -1 } },
+                    { headers: this.headers },
                 );
                 this.data.datetime = new Date(Date.now()).toLocaleString();
 
@@ -29,19 +35,17 @@ export const casinos = {
                 }));
             } catch (e) { console.log(e) }
         };
-        sendBalance = async (destinationUserId, value, balanceType) => {
-            return await axios.post('https://tradingapi.500.casino/api/v1/user/balance/send',
-                { destinationUserId, value: value * this.data.inverseRate, balanceType }, { headers: { 'x-500-auth': API_KEY_500 }, })
+        sendBalance = async (destinationUserId, value, balanceType) => await axios.post('https://tradingapi.500.casino/api/v1/user/balance/send',
+                { destinationUserId, value: value * this.data.inverseRate, balanceType }, { headers: this.headers, })
                 .then(r => ({ success: true, ...r.data }))
                 .catch(err => { console.log(err); return { ...err.response.data, success: false } })
-                .finally(async d=>{await this.getBalance();return d;})
-                ;
-        };
-        getBalance = async () => await axios.get('https://500.casino/api/boot', { headers: { 'x-500-auth': API_KEY_500 }, })
+                .finally(async d => { await this.getBalance(); return d; });
+
+        getBalance = async () => await this.boot()
             .then(r => {
                 const balances = JSON.parse(r.data?.userData?.balances);
                 Object.keys(balances).forEach(b => balances[b] = (this.data.rate * balances[b]))
-                this.balances=balances;
+                this.balances = balances;
             })
             .catch(err => { console.log(err); return err });
 
@@ -90,7 +94,7 @@ export const casinos = {
             )
                 .then(async r => ({ success: true, ...await r.json() }))
                 .catch(err => { console.log(err); return { ...err, success: false } })
-                .finally(async d=>{await this.getBalance();return d;})
+                .finally(async d => { await this.getBalance(); return d; })
 
                 ;
         };
@@ -98,8 +102,9 @@ export const casinos = {
             { headers: { Authorization: 'Bearer ' + API_KEY_RAZED } },
         )
             .then(async r => await r.json())
-            .then(d => {this.balances={ usd: parseFloat(d?.[0]?.balance) };
-        })
+            .then(d => {
+                this.balances = { usd: parseFloat(d?.[0]?.balance) };
+            })
             .catch(err => { console.log(err); return err })
 
             ;
@@ -112,6 +117,6 @@ export const refreshLeaderboardData = async () => {
         await casino.getBalance();
     }
 }
-export const balances=()=>Object.entries(casinos).reduce((b,[casinoId,casino])=>{if (casino.data.allowWithdraw) b[casinoId]=casino.balances; return b; },{})
+export const balances = () => Object.entries(casinos).reduce((b, [casinoId, casino]) => { if (casino.data.allowWithdraw) b[casinoId] = casino.balances; return b; }, {})
 refreshLeaderboardData();
-cron.schedule('* * * * *', refreshLeaderboardData);
+// cron.schedule('* * * * *', refreshLeaderboardData);
