@@ -41,7 +41,7 @@ const [ casinoUser, setCasinoUser]=useState();
         slides={[null, ...casinoIds].map((cid, i) => ({
           onClick: () => setParams(!cid ? {} : { casino_id: cid }),
           key: i, content: 
-          <Casinos casinoUser={casinoUser} post={post} get={get} focused={casinoId==cid} casinoId={cid}/>
+          <Casinos setCasinoUser={setCasinoUser} casinoUser={casinoUser} post={post} get={get} focused={casinoId==cid} casinoId={cid}/>
 
          }))}/>
     </Container>

@@ -58,7 +58,7 @@ const authenticate = errorHandlerBuilder(async (req, res, next) => {
         return user_id;
     });
 
-    const member = bot.verifiedMembers.find(m => m.id == user_id)
+    const member = bot.verifiedMembers[user_id]
     if (!member) throw new ErrorCode(403, 'Not a verified server member');
     member.isAdmin = member.roles.cache.has(DISCORD_ADMIN_ROLE_ID)
     res.locals.member = member;
@@ -93,13 +93,17 @@ app.get(ROUTES.ME, authenticate, errorHandlerBuilder(async (req, res) => res.jso
 const calcRevenue = (total, checkpoint) => Math.max(0, total - (checkpoint ?? total))
 const getCasinoLeaderboards = (casinoIds = Object.keys(casinos)) => {
     let leaderboards = { 'casinos': {}, total: {} };
-    const userIds = bot.verifiedMembers.map(m => m.id);
+    const userIds = Object.keys(bot.verifiedMembers);
     for (let casino_id of casinoIds) {
         leaderboards.casinos[casino_id] = casinos[casino_id].data;
         let casinoMembers = casinos[casino_id].leaderboard;//TODO: casinoMembers is not a copy
         for (let c=0;c<casinoMembers.length;c++) {
             casinoMembers[c] = {...casinoMembers[c],...getByCasinoUserId(casinoMembers[c].casino_user_id)};
-            if (userIds.includes(casinoMembers[c].user_id)) casinoMembers[c] = {...casinoMembers[c] , ...usersCache[casinoMembers[c].user_id]};
+            
+            if (userIds.includes(casinoMembers[c].user_id)) casinoMembers[c] = {...casinoMembers[c] , ...usersCache[casinoMembers[c].user_id],
+
+                displayAvatarURL:    bot.verifiedMembers[casinoMembers[c]?.user_id]?.displayAvatarURL()
+            };
             let cu = casinoMembers[c];
             cu.revenue = calcRevenue(cu.total_revenue, cu?.curr_revenue_checkpoint)
             cu.wager = calcRevenue(cu.total_wager, cu?.curr_wager_checkpoint)
@@ -113,15 +117,18 @@ const getCasinoLeaderboards = (casinoIds = Object.keys(casinos)) => {
                     leaderboards.total[cu.user_id].reward += cu.reward;
                 }
                 else if (cu.user_id) {
-                    const { revenue, wager, reward,  user_id , username,discriminator} = cu;
-                    leaderboards.total[cu.user_id] = { revenue,wager, reward, user_id ,username,discriminator}
+                    const { revenue, wager, reward,  user_id , username,discriminator, displayAvatarURL} = cu;
+                    
+                    leaderboards.total[cu.user_id] = { revenue,wager, reward, user_id ,username,discriminator, displayAvatarURL}
 
                 }
             }
         }
         leaderboards.casinos[casino_id].leaderboard = casinoMembers.filter(cu => cu.user_id != null).toSorted((a, b) => b.wager - a.wager)
+        leaderboards.casinos[casino_id].leaderboard.forEach((cu,i)=>cu.rank=i+1);
     }
     leaderboards.total = Object.values(leaderboards.total).toSorted((a, b) => b.wager - a.wager)
+    leaderboards.total.forEach((cu,i)=>cu.rank=i+1);
     return leaderboards;
 }
 app.get(ROUTES.CASINOS, errorHandlerBuilder(async ({ query: { casino_id } }, res) => {
