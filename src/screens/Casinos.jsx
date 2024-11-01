@@ -5,17 +5,30 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import { ROUTES } from '../../utils/routes';
 import { Container, Tab, Tabs, CssBaseline, Box, TextField, Button, Divider, Select, MenuItem, InputLabel, setRef } from '@mui/material';
 import { DataGrid, GridActionsCellItem, GridAddIcon } from '@mui/x-data-grid';
-const casinoIds = ['razed', '500casino'];
+import bg1 from '../assets/bg1.png';
+import bg2 from '../assets/bg2.png';
+import bg3 from '../assets/bg3.png';
+import bgvid from '../assets/bgvid.mp4';
+import { green, grey, teal } from '@mui/material/colors';
+const images = {
+  '500casino':bg1,
+  'razed':bg2,
+  null:bg3,
+}
+const bg = {
+  '500casino':teal[400],
+  'razed':grey[400],
+  null:green[400],
 
-const Casinos = () => {
-  const [params, setParams] = useSearchParams();
-  const casinoId = params.get('casino_id');
-  const { post, get, casinoUserIds } = useAuth();
-
+}
+const casinoIds = ['500casino','razed'];
+const Casinos = ({get,post, focused, casinoUser, casinoId}) => {
+  console.log({focused,casinoId});
+  
   const [leaderBoard, setLeaderboard] = useState({});
   const [amount, setAmount] = useState(0);
   const [balanceType, setBalanceType] = useState('usdt');
-  const [casinoUser, setCasinoUser] = useState();
+
   const [casinoUserId, setCasinoUserId] = useState();
   const { total_reward, user_id } = casinoUser ?? {};
 
@@ -26,32 +39,20 @@ const Casinos = () => {
     .then(r => { if (!r.data.err) { setCasinoUser(r?.data?.user_casino); setLeaderboard(r.data?.leaderboard); } });
 
   const sendBalance = async () => await post(ROUTES.CLAIM_REWARD, { amount, balanceType, casinoId }).catch(alert)
-    .then(r => { if (r.data.err) {alert(r.data.err); return;} setCasinoUser(cu => ({ ...cu, total_reward: r?.data?.balance })); });//TODO: if fails dont update balance
+    .then(r => { if (r.data.err) {alert(r.data.err); return;} setCasinoUser(cu => ({ ...cu, total_reward: r?.data?.balance })); }); 
+
 
   useEffect(() => {
-    setCasinoUser(casinoUserIds?.[casinoId]);
-  },[casinoId, casinoUserIds]);
-  useEffect(() => {
-    if (!casinoIds.includes(casinoId)) setParams();
-    getLeadboard();
-  }, [casinoId]);
-
+   if (focused) getLeadboard();
+  }, [focused,casinoId]); 
   return (
-    <Container>
-      <CssBaseline />
-      <Navbar />
-      <div style={{ marginTop: 100 }}>
-        <Tabs value={casinoId ?? ''} onChange={(_, casino_id) => { !casino_id ? setParams() : setParams({ casino_id }) }}>
-          {...['', ...casinoIds].map(c =>
-            <Tab label={c || 'Total'} value={c} />
-          )}
-        </Tabs>
 
-        <div>
-
+<Box sx={{  height:1, width:{xs:'80vw',md:'90vw'}, overflowY:'auto',  bgcolor:bg[casinoId], 
+       alignContent:'center'
+}}>
+            <h4>{casinoId || 'Total'} Leaderboard</h4>
           {!casinoIds.includes(casinoId) ? <></> : <div>
 
-            <h4>{casinoId || 'Total'} Leaderboard</h4>
             <br />
             referralCode: {leaderBoard.referralCode}
             <br />
@@ -67,7 +68,8 @@ const Casinos = () => {
             <Button variant='contained' onClick={updateCasinoUserId}>Submit</Button>
 
           </div>
-          }         <DataGrid getRowClassName={({ row }) => row.user_id == user_id ? 'highlight-row' : ''} getRowId={({ user_id, casino_id }) => user_id + '-' + casino_id}
+          }         
+          <DataGrid sx={{}} getRowClassName={({ row }) => row.user_id == user_id ? 'highlight-row' : ''} getRowId={({ user_id, casino_id }) => user_id + '-' + casino_id}
             columns={[
               { field: 'user_id' },
               { field: 'username' },
@@ -86,9 +88,7 @@ const Casinos = () => {
             rows={leaderBoard?.leaderboard}
           />
 
-        </div>
 
-        <>
           {
             leaderBoard?.allowWithdraw ?
               <div>
@@ -100,11 +100,9 @@ const Casinos = () => {
                 </Select>
                 <Button variant='contained' onClick={sendBalance}>Send</Button>
               </div> : <></>
-          }
-        </>
+          } 
+    </Box> 
 
-      </div>
-    </Container>
   );
 };
 

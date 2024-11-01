@@ -1,18 +1,50 @@
-import React from 'react';
-import Navbar from '../components/Navbar.jsx';
-import { Box, CssBaseline } from '@mui/material';
-import { Link, useLocation } from 'react-router-dom';
-import {ROUTES} from '../../utils/routes';
-const Home=() => {
-  const {pathname} = useLocation();
+import React, { useEffect, useState } from 'react';
+import { AppBar, Box, Button, Container, IconButton, Paper, Slide, Toolbar, Typography } from '@mui/material';
+
+import { Menu } from '@mui/icons-material';
+import Casinos from './Casinos';
+import { useSearchParams } from 'react-router-dom';
+import Carousel from 'react-spring-3d-carousel';
+import { config} from 'react-spring';
+import { useAuth } from '../utils/auth';
+
+const casinoIds = ['500casino', 'razed'];
+
+{/* <Box sx={{ display: 'flex', justifyContent: 'center', alignContent: 'center', gap: { sm: 10, md: 20 }, paddingBlock: 20, paddingInline: 20, flexWrap: 'wrap', flexDirection: { sm: 'column', md: 'row' } }}>
+</Box> */}
+const bg = ['teal', 'blue', 'orange']
+const Home = () => {
+  const [params, setParams] = useSearchParams();
+  const casinoId = params.get('casino_id');
+  const [slide, setSlide] = useState();
+const [ casinoUser, setCasinoUser]=useState();
+
+  const { post, get, casinoUserIds } = useAuth();
+  useEffect(
+    () => {
+      if (!casinoIds.includes(casinoId)) setParams();
+      setSlide([null, ...casinoIds].indexOf(casinoId))
+    }
+    , [casinoId])
+    useEffect(() => {
+      setCasinoUser(casinoUserIds?.[casinoId]);
+     },[casinoId, casinoUserIds]);
+
   return (
-    <Box sx={{ display: 'flex', height: '100vh',m:10 }}>
-      <CssBaseline />
-      <Navbar />
-      <Link style={{height:80}} to={ROUTES.CASINOS_PAGE}>
-      GO TO CASINOS
-      </Link>
-    </Box>
+    <Container sx={{ height:'100vh',  overflow: 'hidden' }} maxWidth={false} disableGutters>
+
+
+      <Carousel
+        animationConfig={config.stiff}
+        offsetRadius={1}
+        goToSlide={slide}
+        slides={[null, ...casinoIds].map((cid, i) => ({
+          onClick: () => setParams(!cid ? {} : { casino_id: cid }),
+          key: i, content: 
+          <Casinos casinoUser={casinoUser} post={post} get={get} focused={casinoId==cid} casinoId={cid}/>
+
+         }))}/>
+    </Container>
   );
 };
 
