@@ -5,7 +5,7 @@ import { Menu } from '@mui/icons-material';
 import Casinos from './Casinos';
 import { useSearchParams } from 'react-router-dom';
 import Carousel from 'react-spring-3d-carousel';
-import { config} from 'react-spring';
+import { config } from 'react-spring';
 import { useAuth } from '../utils/auth';
 import { ROUTES } from '../../utils/routes';
 
@@ -18,7 +18,7 @@ const Home = () => {
   const [params, setParams] = useSearchParams();
   const casinoId = params.get('casino_id');
   const [slide, setSlide] = useState();
-const [ casinoUser, setCasinoUser]=useState();
+  const [casinoUser, setCasinoUser] = useState();
 
   const { post, get, casinoUserIds } = useAuth();
   useEffect(
@@ -27,24 +27,46 @@ const [ casinoUser, setCasinoUser]=useState();
       setSlide([null, ...casinoIds].indexOf(casinoId))
     }
     , [casinoId])
-    useEffect(() => {
-      setCasinoUser(casinoUserIds?.[casinoId]);
-     },[casinoId, casinoUserIds]);
+  useEffect(() => {
+    setCasinoUser(casinoUserIds?.[casinoId]);
+  }, [casinoId, casinoUserIds]);
 
   return (
-    <Container sx={{ flex:1, height:'100vh', overflow: 'hidden',  }} maxWidth={false} disableGutters>
-<AppBar   style={{opacity:0.6}}  ><Toolbar><Button variant='contained' href={API_URL+ROUTES.LOGIN}>Login</Button></Toolbar></AppBar>
-
+    <Container sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100vh', width:'100vw', overflow: 'hidden', bgcolor: 'tomato' }} maxWidth={false} disableGutters>
+      <AppBar position='static'><Toolbar>
+        <Button variant='contained' href={API_URL + ROUTES.LOGIN}>Login</Button>
+      </Toolbar></AppBar>
+<Box sx={{width:'75vw', height:1, py:1 }}> 
+     
       <Carousel
         animationConfig={config.stiff}
         offsetRadius={1}
         goToSlide={slide}
         slides={[null, ...casinoIds].map((cid, i) => ({
           onClick: () => setParams(!cid ? {} : { casino_id: cid }),
-          key: i, content: 
-          <Casinos key={i} setCasinoUser={setCasinoUser} casinoUser={casinoUser} post={post} get={get} focused={casinoId==cid} casinoId={cid}/>
+          key: i, content:
+            <Casinos key={i} setCasinoUser={setCasinoUser} casinoUser={casinoUser} post={post} get={get} focused={casinoId == cid} casinoId={cid} />
+        }))}  
+  offsetFn={(offset ) => { 
+    if (offset  === 0) {
+      return {
+        opacity: 1,  
+        transform: "translateY(-50%) translateX(-50%) scale(1)",
+        left: "50%",
+      };
+    }
 
-         }))}/>
+     const isLeft = offset   < 0;
+
+    return {
+      opacity: 0.9, 
+      transform: isLeft
+        ? "translateY(-50%) translateX(30%) scale(0.9)" // For elements on the left
+        : "translateY(-50%) translateX(-130%) scale(0.9)", // For elements on the right
+    };
+  }}
+/>
+</Box>
     </Container>
   );
 };

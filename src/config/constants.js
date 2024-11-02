@@ -31,7 +31,7 @@ export const leaderboard=[
             "prev_wager_checkpoint": null,
             "curr_wager_checkpoint": "70000.00",
             "total_reward": 947.29,
-            "username": "caspe_",
+            "username": "caspt4343e_",
             "discriminator": "0",
             "revenue": 500,
             "wager": 599,

@@ -3,7 +3,7 @@ import Navbar from '../components/Navbar';
 import { useAuth } from '../utils/auth';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ROUTES } from '../../utils/routes';
-import { Container, Tab, Tabs, CssBaseline, Box, TextField, Button, Divider, Select, MenuItem, InputLabel, setRef, Paper, Typography, Popover } from '@mui/material';
+import { Container, Tab, Tabs, CssBaseline, Box, TextField, Button, Divider, Select, MenuItem, InputLabel, setRef, Paper, Typography, Popover, Table } from '@mui/material';
 import { DataGrid, GridActionsCellItem, GridAddIcon } from '@mui/x-data-grid';
 import bg1 from '../assets/bg1.png';
 import bg2 from '../assets/bg2.png';
@@ -24,7 +24,6 @@ const casinoIds = ['500casino', 'razed'];
 const Casinos = ({ get, post, focused, casinoUser, setCasinoUser, casinoId }) => {
 
   const [leaderBoard, setLeaderboard] = useState();
-  const [anchorEl, setAnchorEl] = useState(null);
   const [amount, setAmount] = useState(0);
   const [balanceType, setBalanceType] = useState();
 
@@ -60,13 +59,15 @@ const Casinos = ({ get, post, focused, casinoUser, setCasinoUser, casinoId }) =>
   }, [focused, casinoId]);
   return (
 
-    <Box sx={{
-      paddingTop:10,
-     height:1,  width: { xs: '60vw', md: '40vw' },  overflowY: 'auto', bgcolor: bg[casinoId],
+    <Paper elevation={focused ? 24 : 0} sx={{
+      // filter: focused?null:"blur(10px)",
+      scrollbarWidth: 'none',
+      width: '30vw',
+      height: 1, overflow: 'auto', bgcolor: bg[casinoId],
       alignContent: 'center'
     }}>
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' } }}>
- 
+      <Box sx={{ display: 'flex', flexWrap:'wrap', flexDirection: { xs: 'column', xl: 'row' } }}>
+
         <Typography variant='h5' component='a' // href={leaderBoard?.referralLink}
         >{casinoId || 'Total'} Leaderboard</Typography>
 
@@ -91,23 +92,23 @@ const Casinos = ({ get, post, focused, casinoUser, setCasinoUser, casinoId }) =>
 
 
       <Box sx={{
-        display: 'flex', flexDirection: { md: 'row', xs: 'column' }, justifyContent: 'center', alignItems: 'center', gap: { xs: 5, md: 5 }, paddingBlock: { xs: 5, md: 5 }, paddingInline: { xs: 5, md: 5 }
+        display: 'flex',flexWrap:'wrap', flexDirection: { md: 'row', xs: 'column' }, justifyContent: 'center', alignItems: 'center', gap: 5, paddingBlock: 5, paddingInline: 5
       }}>
         {leaderBoard?.leaderboard?.slice(0, 3).map(
-          cu => <Paper key={cu?.rank} sx={{ width: 200, height: 400, p: 1 }}>
+          cu => <Paper key={cu?.rank} sx={{ width:160, height: 280, p: 1 }}>
             <img width="100%" src={cu?.displayAvatarURL} />
-            <Typography variant='h1'>{cu?.rank}</Typography>
+            <Typography variant='h3'>{cu?.rank}</Typography>
             <Typography variant='h5'>{casinoIds.includes(casinoId) ? cu?.casino_user_id : cu?.username}</Typography>
             <Typography variant='h5'>${cu?.wager}</Typography>
           </Paper>
         )}
       </Box>
-      <DataGrid  autoHeight getRowClassName={({ row }) => row.user_id == user_id ? 'highlight-row' : ''} getRowId={({ rank }) => rank}
+
+
+      <DataGrid autoHeight getRowClassName={({ row }) => row.user_id == user_id ? 'highlight-row' : ''} getRowId={({ rank }) => rank}
         columns={[
-          { field: 'rank'},
-          {
-            field: 'displayAvatarURL', type: 'image', renderCell: (params) => <img src={params.value} />
-          },
+          { field: 'rank' },
+          { field: 'displayAvatarURL', type: 'image', renderCell: (params) => <img src={params.value} /> },
           { field: 'username' },
           { field: 'user_id' },
           { field: 'casino_user_id' },
@@ -115,27 +116,27 @@ const Casinos = ({ get, post, focused, casinoUser, setCasinoUser, casinoId }) =>
           { field: 'wager' },
 
         ]
-          .filter(({ field }) => casinoIds.includes(casinoId) ? true : ['reward', 'revenue', 'wager', 'user_id', 'username'].includes(field))
+          .filter(({ field }) => casinoIds.includes(casinoId) ? true : ['displayAvatarURL', 'rank', 'reward', 'revenue', 'wager', 'user_id', 'username'].includes(field))
         }
-         
-        rows={leaderBoard?.leaderboard?.slice(0, 20)}
-        
-        hideFooter  
 
+        rows={leaderBoard?.leaderboard?.slice(0, 20)}
+ 
+        hideFooter
+        autoPageSize
         rowSpacingType='margin'
         sx={{
-          border:0, 
-          pointerEvents: 'none', 
-    '& .MuiDataGrid-columnSeparator': {
-      display: 'none',
-    },
-  
           
+            border: 0,
+          pointerEvents: 'none',
+          '& .MuiDataGrid-columnSeparator': {
+            display: 'none',
+          },
+
         }} />
 
 
 
-    </Box>
+    </Paper>
 
   );
 };
