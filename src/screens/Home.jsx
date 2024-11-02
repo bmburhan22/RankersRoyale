@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AppBar, Box, Button, Container, IconButton, Paper, Slide, Toolbar, Typography } from '@mui/material';
+import { AppBar, Link, Box, Button, Container, IconButton, Paper, Slide, Toolbar, Typography } from '@mui/material';
 
 import { Menu } from '@mui/icons-material';
 import Casinos from './Casinos';
@@ -7,11 +7,12 @@ import { useSearchParams } from 'react-router-dom';
 import Carousel from 'react-spring-3d-carousel';
 import { config} from 'react-spring';
 import { useAuth } from '../utils/auth';
+import { ROUTES } from '../../utils/routes';
 
 const casinoIds = ['500casino', 'razed'];
 
-{/* <Box sx={{ display: 'flex', justifyContent: 'center', alignContent: 'center', gap: { sm: 10, md: 20 }, paddingBlock: 20, paddingInline: 20, flexWrap: 'wrap', flexDirection: { sm: 'column', md: 'row' } }}>
-</Box> */}
+// <Box sx={{ display: 'flex', justifyContent: 'center', alignContent: 'center', gap: { sm: 10, md: 20 }, paddingBlock: 20, paddingInline: 20, flexWrap: 'wrap', flexDirection: { sm: 'column', md: 'row' } }}>
+
 const bg = ['teal', 'blue', 'orange']
 const Home = () => {
   const [params, setParams] = useSearchParams();
@@ -31,8 +32,8 @@ const [ casinoUser, setCasinoUser]=useState();
      },[casinoId, casinoUserIds]);
 
   return (
-    <Container sx={{ height:'100vh',  overflow: 'hidden' }} maxWidth={false} disableGutters>
-
+    <Container sx={{ flex:1, height:'100vh', overflow: 'hidden',  }} maxWidth={false} disableGutters>
+<AppBar   style={{opacity:0.6}}  ><Toolbar><Button variant='contained' href={API_URL+ROUTES.LOGIN}>Login</Button></Toolbar></AppBar>
 
       <Carousel
         animationConfig={config.stiff}
@@ -41,7 +42,7 @@ const [ casinoUser, setCasinoUser]=useState();
         slides={[null, ...casinoIds].map((cid, i) => ({
           onClick: () => setParams(!cid ? {} : { casino_id: cid }),
           key: i, content: 
-          <Casinos setCasinoUser={setCasinoUser} casinoUser={casinoUser} post={post} get={get} focused={casinoId==cid} casinoId={cid}/>
+          <Casinos key={i} setCasinoUser={setCasinoUser} casinoUser={casinoUser} post={post} get={get} focused={casinoId==cid} casinoId={cid}/>
 
          }))}/>
     </Container>
