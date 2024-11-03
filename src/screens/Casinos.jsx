@@ -3,6 +3,7 @@ import Navbar from '../components/Navbar';
 import { useAuth } from '../utils/auth';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ROUTES } from '../../utils/routes';
+import Top3 from '../components/Top3';
 import { Container, Tab, Tabs, CssBaseline, Box, TextField, Button, Divider, Select, MenuItem, InputLabel, setRef, Paper, Typography, Popover, Table } from '@mui/material';
 import { DataGrid, GridActionsCellItem, GridAddIcon } from '@mui/x-data-grid';
 import bg1 from '../assets/bg1.png';
@@ -12,6 +13,7 @@ import bgvid from '../assets/bgvid.mp4';
 import { green, grey, teal } from '@mui/material/colors';
 import { leaderboard } from '../config/constants';
 import './style.css';
+import { Input, InputNumber } from 'antd';
 const bg = {
   '500casino': teal[400],
   'razed': grey[400],
@@ -19,13 +21,11 @@ const bg = {
 
 }
 
-//  <Box sx={{ display: 'flex', justifyContent: 'center', alignContent: 'center', gap: { sm: 10, md: 20 }, paddingBlock: 20, paddingInline: 20, flexWrap: 'wrap', flexDirection: { sm: 'column', md: 'row' } }}>
 const casinoIds = ['500casino', 'razed'];
 const Casinos = ({ get, post, focused, casinoUser, setCasinoUser, casinoId }) => {
 
   const [leaderBoard, setLeaderboard] = useState();
   const [amount, setAmount] = useState(0);
-  const [balanceType, setBalanceType] = useState();
 
   const [casinoUserId, setCasinoUserId] = useState();
   const { total_reward, user_id } = casinoUser ?? {};
@@ -50,7 +50,7 @@ const Casinos = ({ get, post, focused, casinoUser, setCasinoUser, casinoId }) =>
       }
     });
 
-  const sendBalance = async () => await post(ROUTES.CLAIM_REWARD, { amount, balanceType, casinoId }).catch(alert)
+  const sendBalance = async () => await post(ROUTES.CLAIM_REWARD, { amount, casinoId }).catch(alert)
     .then(r => { if (r.data.err) { alert(r.data.err); return; } setCasinoUser(cu => ({ ...cu, total_reward: r?.data?.balance })); });
 
 
@@ -64,43 +64,38 @@ const Casinos = ({ get, post, focused, casinoUser, setCasinoUser, casinoId }) =>
       scrollbarWidth: 'none',
       width: '30vw',
       height: 1, overflow: 'auto', bgcolor: bg[casinoId],
-      alignContent: 'center'
+      alignContent: 'center',
+      alignItems: 'center',
     }}>
-      <Box sx={{ display: 'flex', flexWrap:'wrap', flexDirection: { xs: 'column', xl: 'row' } }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', flexDirection: { xs: 'column', xl: 'row' } }}>
 
         <Typography variant='h5' component='a' // href={leaderBoard?.referralLink}
         >{casinoId || 'Total'} Leaderboard</Typography>
 
-        {!casinoIds.includes(casinoId) ? <></> : <div> casinoUserId: {casinoUser?.casino_user_id}<br />
-          <TextField label={casinoId + ' username'} variant='outlined' value={casinoUserId} onChange={({ target: { value } }) => setCasinoUserId(value)} />
-          <Button variant='contained' onClick={updateCasinoUserId}>Submit</Button>
-        </div>}
-        {!leaderBoard?.allowWithdraw ?
-          <></> : <Box display='flex' flexDirection='row'>
+        {!casinoIds.includes(casinoId) ? <></> :
+          <Input addonBefore={casinoUser?.casino_user_id}
+            value={casinoUserId} onChange={({ target: { value } }) => setCasinoUserId(value)}
+            addonAfter={<Button variant='contained' onClick={updateCasinoUserId}>Submit</Button>}
+          ></Input>
 
-            <TextField sx={{ minWidth: 60 }} label={`Amount (available: ${total_reward})`} type='number' variant='outlined'
-              slotProps={{ htmlInput: { max: total_reward, min: 0 } }} value={amount}
-              onChange={({ target: { value } }) => setAmount(value)} ></TextField>
-            <Select sx={{ height: 60 }} defaultValue={leaderBoard?.currencies?.[0]} label='Currency' variant='outlined' value={balanceType} onChange={({ target: { value } }) => setBalanceType(value)} >
-              {leaderBoard?.currencies?.map(curr => <MenuItem key={curr} value={curr}>{curr}</MenuItem>)}
-            </Select>
-            <Button sx={{ height: 40 }} variant='contained' onClick={sendBalance}>Send</Button>
-          </Box>}
+        }
+        {!leaderBoard?.allowWithdraw ? <></> :
+          <InputNumber addonBefore={`av: ${total_reward}`} 
+            addonAfter={<Button sx={{ height: 40 }} variant='contained' onClick={sendBalance}>Send</Button>}
+            max={total_reward} min={0}
+            value={amount} onChange={({ target: { value } }) => setAmount(value)}
+          ></InputNumber>
+        }
       </Box>
 
 
-
+      <Top3 key={1} cu={leaderBoard?.leaderboard?.[0]} />
 
       <Box sx={{
-        display: 'flex',flexWrap:'wrap', flexDirection: { md: 'row', xs: 'column' }, justifyContent: 'center', alignItems: 'center', gap: 5, paddingBlock: 5, paddingInline: 5
+        display: 'flex', flexWrap: 'wrap', flexDirection: { md: 'row', xs: 'column' }, justifyContent: 'center', alignItems: 'center', gap: 5, paddingBlock: 5, paddingInline: 5
       }}>
-        {leaderBoard?.leaderboard?.slice(0, 3).map(
-          cu => <Paper key={cu?.rank} sx={{ width:160, height: 280, p: 1 }}>
-            <img width="100%" src={cu?.displayAvatarURL} />
-            <Typography variant='h3'>{cu?.rank}</Typography>
-            <Typography variant='h5'>{casinoIds.includes(casinoId) ? cu?.casino_user_id : cu?.username}</Typography>
-            <Typography variant='h5'>${cu?.wager}</Typography>
-          </Paper>
+        {leaderBoard?.leaderboard?.slice(1, 3).map(
+          cu => <Top3 key={cu?.rank} cu={cu} />
         )}
       </Box>
 
@@ -120,17 +115,13 @@ const Casinos = ({ get, post, focused, casinoUser, setCasinoUser, casinoId }) =>
         }
 
         rows={leaderBoard?.leaderboard?.slice(0, 20)}
- 
+
         hideFooter
-        autoPageSize
-        rowSpacingType='margin'
         sx={{
-          
-            border: 0,
+          '& ::-webkit-scrollbar': { display: 'none' },
+          border: 0,
           pointerEvents: 'none',
-          '& .MuiDataGrid-columnSeparator': {
-            display: 'none',
-          },
+          '& .MuiDataGrid-columnSeparator': { display: 'none', },
 
         }} />
 

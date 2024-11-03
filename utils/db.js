@@ -72,7 +72,7 @@ export const getSettingsNum = key => parseFloat(settingsCache[key]);
 // ============== Withdrawals ===========
 const withdrawals = sq.define('withdrawals', {
     wid: { primaryKey: true, type: INTEGER, unique: true, autoIncrement: true, autoIncrementIdentity: true, },
-    amount: { type: DECIMAL(1000, 2) }, balance: { type: DECIMAL(1000, 2) }, balance_type: { type: STRING },
+    amount: { type: DECIMAL(1000, 2) }, balance: { type: DECIMAL(1000, 2) },  
     status: { type: STRING, allowNull: false, defaultValue: 'pending' },
     user_id: { type: STRING, allowNull: false }, casino_id: { type: STRING, allowNull: false }, casino_user_id: { type: STRING, allowNull: false },
 }, { timestamps: true }

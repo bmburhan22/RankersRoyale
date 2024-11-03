@@ -9,18 +9,11 @@ const zenapi = (method, url, headers, data) => axios({
 });
 export const casinos = {
     '500casino': await (new class _500casino {
+        transactionCurrencies = ['eth', 'usdt'];
         headers = { 'x-500-auth': API_KEY_500 }
         boot = () => axios.get('https://500.casino/api/boot', { headers: this.headers })
         constructor() { this.data = {}; }
-        init = async () => await this.boot()
-
-            .then(async ({ data: { userData: { referralCode }, siteSettings, balances: { crypto: currencies } } }) => {
-                const { rate, inverseRate } = siteSettings.currencyRates.bux.usd;
-                const referralLink = "https://500.casino/r/" + referralCode
-                this.data = { allowWithdraw: true, rate, currencies, inverseRate, referralCode, referralLink }
-                await this.getLeaderboard();
-                return this;
-            }).catch(c => this);
+        init = async () => await this.getBalance().then(async d => { await this.getLeaderboard(); return d; });
         getLeaderboard = async () => {
             try {
                 const r = await axios.post("https://500.casino/api/rewards/affiliate-users",
@@ -35,18 +28,41 @@ export const casinos = {
                 }));
             } catch (e) { console.log(e) }
         };
-        sendBalance = async (destinationUserId, value, balanceType) => await axios.post('https://tradingapi.500.casino/api/v1/user/balance/send',
-                { destinationUserId, value: value * this.data.inverseRate, balanceType }, { headers: this.headers, })
-                .then(r => ({ success: true, ...r.data }))
-                .catch(err => { console.log(err); return { ...err.response.data, success: false } })
-                .finally(async d => { await this.getBalance(); return d; });
+        sendBalance = async (destinationUserId, value) => {
+            let resp = { success: false };
+            for await (let balanceType of this.balanceTypes) {
+                try {
+                    console.log('500 transaction trying', balanceType);
 
+                    const r = await axios.post('https://tradingapi.500.casino/api/v1/user/balance/send',
+                        { destinationUserId, value: value * this.data.inverseRate, balanceType }, { headers: this.headers, })
+                    resp = { success: true, ...r.data };
+                    if (!resp.success) throw new Error();
+                    console.log('500 transaction success', balanceType);
+                    break;
+                } catch (err) {
+                    resp = { ...err.response?.data, success: false };
+                    console.log('500 transaction failed', balanceType);
+                    continue;
+                }
+            }
+
+            await this.getBalance(); return resp;
+        }
         getBalance = async () => await this.boot()
-            .then(r => {
-                // const balances = JSON.parse(r.data?.userData?.balances);
-                this.balances = Object.entries(JSON.parse(r.data?.userData?.balances)).map(([currency_type, bal]) => ({ currency_type,casino_id:'500casino', value:this.data.rate *bal}))
-            })
-            .catch(err => { console.log(err); return err });
+
+            .then(async ({ data: { userData: { referralCode, balances: bal }, siteSettings, } }) => {
+
+
+                const { rate, inverseRate } = siteSettings.currencyRates.bux.usd;
+            
+                bal = await JSON.parse(bal);
+                const balances = this.transactionCurrencies.map(currency_type => ({  casino_id: '500casino',currency_type, value: rate * bal[currency_type] }))
+            
+                const referralLink = "https://500.casino/r/" + referralCode
+                this.data = { allowWithdraw: true, rate, balances, inverseRate, referralCode, referralLink }
+                return this;
+            }).catch(c => this);
 
 
     }().init()),
@@ -62,7 +78,7 @@ export const casinos = {
             .then(r => r.json())
             .then(async ({ referral_code: referralCode }) => {
                 const referralLink = "https://www.razed.com/signup/?raf=" + referralCode
-                this.data = { allowWithdraw: true, rate: 1, currencies: ['usd'], inverseRate: 1, referralCode, referralLink }
+                this.data = { allowWithdraw: true, rate: 1, inverseRate: 1, referralCode, referralLink }
                 await this.getLeaderboard();
                 return this;
             }).catch(c => {
@@ -84,7 +100,7 @@ export const casinos = {
             } catch (e) { console.log(e) }
         };
 
-        sendBalance = async (receiver_username, amount, balanceType) => {
+        sendBalance = async (receiver_username, amount) => {
             return await fetch('https://api.razed.com/player/api/v1/tips',
                 {
                     method: 'POST', headers: { Authorization: 'Bearer ' + API_KEY_RAZED },
@@ -103,11 +119,9 @@ export const casinos = {
         )
             .then(async r => await r.json())
             .then(d => {
-                this.balances = [{casino_id:'razed', currency_type:'usd', value:parseFloat(d?.[0]?.balance) }];
+                this.data.balances = [{ casino_id: 'razed', currency_type: 'usd', value: parseFloat(d?.[0]?.balance) }];
             })
-            .catch(err => { console.log(err); return err })
-
-            ;
+            .catch(err => { console.log(err); return err });
 
     }().init())
 }
@@ -117,6 +131,6 @@ export const refreshLeaderboardData = async () => {
         await casino.getBalance();
     }
 }
-export const balances = () => Object.values(casinos).reduce((bal,casino ) => !casino.data.allowWithdraw?bal:[...bal,...casino.balances],[])
+export const balances = () => Object.values(casinos).reduce((bal, casino) => !casino.data.allowWithdraw ? bal : [...bal, ...casino.data.balances], [])
 refreshLeaderboardData();
 cron.schedule('* * * * *', refreshLeaderboardData);

@@ -18,6 +18,8 @@ import {
 } from './utils/db.js';
 import cron from 'node-cron';
 import { balances, casinos, refreshLeaderboardData } from './utils/casinos.js';
+ 
+
 import { readFileSync } from 'fs';
 dotenv.config();
 const { PORT, JWT_SECRET, DISCORD_ADMIN_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET } = process.env;
@@ -151,7 +153,7 @@ app.post(ROUTES.CASINOS, authenticate, errorHandlerBuilder(async ({ body: { casi
     });
 }));
 const round = val => Math.floor(parseFloat(val) * 100) / 100;
-const transaction = async ({ user_id, casinoId, amount, balanceType }) => {
+const transaction = async ({ user_id, casinoId, amount}) => {
     amount = round(amount);
     if (isNaN(amount)) throw new ErrorCode(400, 'Redeem amount invalid');
     if (amount > 100) throw new ErrorCode(400, 'Redeem amount must not be more than 100');
@@ -160,7 +162,7 @@ const transaction = async ({ user_id, casinoId, amount, balanceType }) => {
 
     if (total_reward < amount) throw new ErrorCode(400, 'Insufficient funds');
 
-    const w = await createWithdrawal({ casino_id: casinoId, casino_user_id, user_id, amount, balance: total_reward - amount, balance_type: balanceType });
+    const w = await createWithdrawal({ casino_id: casinoId, casino_user_id, user_id, amount, balance: total_reward - amount, });
 
     if (w) {
         await setCasinoUser({ casino_id, user_id, total_reward: total_reward - amount });
@@ -169,11 +171,11 @@ const transaction = async ({ user_id, casinoId, amount, balanceType }) => {
     return w;
 }
 
-const handleWithdrawal = async ({ wid, user_id, casino_id, casino_user_id, balance_type, amount }, approve) => {
+const handleWithdrawal = async ({ wid, user_id, casino_id, casino_user_id,  amount }, approve) => {
     amount = parseFloat(amount);
     approve = approve && casinos[casino_id].data.allowWithdraw;
     if (approve) {
-        const { success } = await casinos[casino_id].sendBalance(casino_user_id, amount, balance_type);
+        const { success } = await casinos[casino_id].sendBalance(casino_user_id, amount);
         approve = success
     }
     if (!approve) {

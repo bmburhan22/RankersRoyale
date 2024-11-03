@@ -99,8 +99,7 @@ const AdminHome = () => {
                 columns={[
                   { field: 'wid' },
                   { field: 'amount' },
-                  { field: 'balance' },
-                  { field: 'balance_type' },
+                  { field: 'balance' }, 
                   {field: 'status',    },
                   { field: 'user_id' },
                   { field: 'casino_id' },
