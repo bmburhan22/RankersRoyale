@@ -2,8 +2,7 @@ import { createContext, useState, useContext, useLayoutEffect } from 'react';
 import axios from "axios";
 axios.defaults.withCredentials = true;
 import Cookie from 'js-cookie';
-import { ROUTES } from '../../utils/routes.js';
-import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../utils/routes.js'; 
 
 export const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
@@ -32,7 +31,6 @@ export const AuthProvider = ({ children }) => {
     return res;
   }
   const [auth, setAuth] = useState(null);
-  const navigate = useNavigate();
 
   useLayoutEffect(() => { validateAuth(); }, []);
 
@@ -59,7 +57,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     // navigate(ROUTES.HOME, { replace: true });
     setAuth({ isAuth: false, isAdmin: false })
-    // Cookie.remove('token');
+    Cookie.remove('token');
 
   }
 

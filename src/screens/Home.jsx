@@ -37,7 +37,7 @@ const Home = () => {
       <AppBar position='static'><Toolbar>
         <Button variant='contained' href={API_URL + ROUTES.LOGIN}>Login</Button>
       </Toolbar></AppBar>
-      <Box sx={{ width: '75%'   , height: 1, py: 1 }}>
+      <Box sx={{ width: 1  , height: 1, py: 1 }}>
 
         <Carousel
           animationConfig={config.stiff}

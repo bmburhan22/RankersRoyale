@@ -6,12 +6,9 @@ import { ROUTES } from '../../utils/routes';
 import Top3 from '../components/Top3';
 import { Container, Tab, Tabs, CssBaseline, Box, TextField, Button, Divider, Select, MenuItem, InputLabel, setRef, Paper, Typography, Popover, Table } from '@mui/material';
 import { DataGrid, GridActionsCellItem, GridAddIcon } from '@mui/x-data-grid';
-import bg1 from '../assets/bg1.png';
-import bg2 from '../assets/bg2.png';
-import bg3 from '../assets/bg3.png';
-import bgvid from '../assets/bgvid.mp4';
+ 
 import { green, grey, teal } from '@mui/material/colors';
-import { leaderboard } from '../config/constants';
+import { ld } from '../config/constants';
 
 import { Input, InputNumber } from 'antd';
 const bg = {
@@ -30,13 +27,13 @@ const Casinos = ({ get, post, focused, casinoUser, setCasinoUser, casinoId }) =>
   const [casinoUserId, setCasinoUserId] = useState();
   const { total_reward, user_id } = casinoUser ?? {};
 
-  const getLeadboard = async () => setLeaderboard({
-    ...await get(ROUTES.CASINOS + (!casinoId ? '' : `?casino_id=${casinoId}`)).then(({ data }) =>
-      !casinoId ? data.total : data.casinos[casinoId]
-    ),
-    leaderboard //TODO: constant lederboard
+  const getLeadboard = async () => setLeaderboard(
+    await get(ROUTES.CASINOS + (!casinoId ? '' : `?casino_id=${casinoId}`)).then(({ data }) =>
+    !casinoId ? data.total : data.casinos[casinoId]
+    // !casinoId ? ld.total : ld.casinos[casinoId] //TODO: constant lederboard
+    )
 
-  });
+  );
 
 
   const updateCasinoUserId = async () => await post(ROUTES.CASINOS, { casino_id: casinoId, casino_user_id: casinoUserId }).catch(alert)
@@ -45,7 +42,7 @@ const Casinos = ({ get, post, focused, casinoUser, setCasinoUser, casinoId }) =>
         setCasinoUser(r?.data?.user_casino); setLeaderboard(
           {
             ...r.data?.leaderboard,
-            leaderboard //TODO: constant lederboard
+            // leaderboard:ld.casinos[casinoId].leaderboard //TODO: constant lederboard
 
           }
         );
@@ -64,7 +61,7 @@ const Casinos = ({ get, post, focused, casinoUser, setCasinoUser, casinoId }) =>
     <Paper elevation={focused ? 24 : 0} sx={{
       // filter: focused?null:"blur(10px)",
       scrollbarWidth: 'none',
-      width: '30vw',
+      width: 1,
       height: 1, overflow: 'auto', bgcolor: bg[casinoId],
       alignContent: 'center',
       justifyItems: 'center',

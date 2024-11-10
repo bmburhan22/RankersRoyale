@@ -1,0 +1,11 @@
+{
+    "manifest_version": 3,
+    "name": "Rankers Royale Extension",
+    "description": "Browser extension for Rankers Royale",
+    "version": "1.0.0", 
+    "host_permissions": ["*://*/*"],
+    "permissions": [   "cookies"],
+    "action": {
+        "default_popup": "index.html"
+    }
+}

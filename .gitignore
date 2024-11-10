@@ -1,3 +1,4 @@
+dist-ext
 certs/
 *.pem
 *.sqlite

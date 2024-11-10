@@ -7,7 +7,10 @@
     "start": "npm run build && node ./index",
     "test": "npm run build && nodemon",
     "dev": "vite",
-    "build": "vite build",
+    "devext": "vite --mode=ext",
+    "buildapp": "vite build",
+    "buildext": "vite build --mode=ext",
+    "build": "npm run buildapp && npm run buildext",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -40,7 +43,8 @@
     "react-spring": "^9.7.4",
     "react-spring-3d-carousel": "^1.3.4",
     "sequelize": "^6.37.3",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "vite-plugin-static-copy": "^2.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",

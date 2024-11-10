@@ -41,7 +41,7 @@ users_casinos.addHook('afterUpsert', ([uc]) => setUsersCasinosCache(uc));
 users_casinos.addHook('afterDestroy', rec => delete usersCasinosCache[usersCasinosKey(rec)]);
 // =============USERS=================
 const users = sq.define('users',
-    { user_id: { primaryKey: true, type: STRING }, username: { type: STRING }, discriminator: { type: STRING }, }
+    { user_id: { primaryKey: true, type: STRING, unique:true, allowNull:false, }, username: { type: STRING }, discriminator: { type: STRING }, }
 );
 export const usersCache = {};
 export const setUser = async ({ user_id, username, discriminator }) => await users.upsert({ user_id, username, discriminator }, { updateOnDuplicate: ['username', 'discriminator'], returning: true });
