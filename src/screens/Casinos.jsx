@@ -12,7 +12,7 @@ import bg3 from '../assets/bg3.png';
 import bgvid from '../assets/bgvid.mp4';
 import { green, grey, teal } from '@mui/material/colors';
 import { leaderboard } from '../config/constants';
-import './style.css';
+
 import { Input, InputNumber } from 'antd';
 const bg = {
   '500casino': teal[400],
@@ -31,7 +31,9 @@ const Casinos = ({ get, post, focused, casinoUser, setCasinoUser, casinoId }) =>
   const { total_reward, user_id } = casinoUser ?? {};
 
   const getLeadboard = async () => setLeaderboard({
-    ...(await get(ROUTES.CASINOS + (!casinoId ? '' : `?casino_id=${casinoId}`)))?.data,
+    ...await get(ROUTES.CASINOS + (!casinoId ? '' : `?casino_id=${casinoId}`)).then(({ data }) =>
+      !casinoId ? data.total : data.casinos[casinoId]
+    ),
     leaderboard //TODO: constant lederboard
 
   });
@@ -65,7 +67,7 @@ const Casinos = ({ get, post, focused, casinoUser, setCasinoUser, casinoId }) =>
       width: '30vw',
       height: 1, overflow: 'auto', bgcolor: bg[casinoId],
       alignContent: 'center',
-      alignItems: 'center',
+      justifyItems: 'center',
     }}>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', flexDirection: { xs: 'column', xl: 'row' } }}>
 
@@ -80,12 +82,12 @@ const Casinos = ({ get, post, focused, casinoUser, setCasinoUser, casinoId }) =>
 
         }
         {!leaderBoard?.allowWithdraw ? <></> :
-          <InputNumber addonBefore={`av: ${total_reward}`} 
+          <InputNumber prefix='$' addonBefore={`av: ${total_reward}`}
             addonAfter={<Button sx={{ height: 40 }} variant='contained' onClick={sendBalance}>Send</Button>}
-            max={total_reward} min={0}
+            max={total_reward} min={0} width={40}
             value={amount} onChange={({ target: { value } }) => setAmount(value)}
-          ></InputNumber>
-        }
+          ></InputNumber>}
+
       </Box>
 
 

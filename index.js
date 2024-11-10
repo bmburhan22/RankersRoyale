@@ -18,7 +18,7 @@ import {
 } from './utils/db.js';
 import cron from 'node-cron';
 import { balances, casinos, refreshLeaderboardData } from './utils/casinos.js';
- 
+
 
 import { readFileSync } from 'fs';
 dotenv.config();
@@ -76,7 +76,7 @@ app.get(REDIRECT, errorHandlerBuilder(async ({ query: { code } }, res) => {
         client_id, redirect_uri, code, client_secret: DISCORD_CLIENT_SECRET, grant_type: 'authorization_code',
     });
     const { data: { access_token } } = await axios.post(`${DISCORD_API}/oauth2/token`, params,);
-    const { data: { id:user_id, username, discriminator } } = await axios.get(`${DISCORD_API}/users/@me`, { headers: { 'Authorization': `Bearer ${access_token}`, } });
+    const { data: { id: user_id, username, discriminator } } = await axios.get(`${DISCORD_API}/users/@me`, { headers: { 'Authorization': `Bearer ${access_token}`, } });
     await setUser({ user_id, username, discriminator });
     return res.cookie('token', jwt.sign(user_id, JWT_SECRET), { maxAge: 30 * 24 * 60 * 60 * 1000 }).redirect(ROUTES.HOME);
 
@@ -99,18 +99,19 @@ const getCasinoLeaderboards = (casinoIds = Object.keys(casinos)) => {
     for (let casino_id of casinoIds) {
         leaderboards.casinos[casino_id] = casinos[casino_id].data;
         let casinoMembers = casinos[casino_id].leaderboard;//TODO: casinoMembers is not a copy
-        for (let c=0;c<casinoMembers.length;c++) {
-            casinoMembers[c] = {...casinoMembers[c],...getByCasinoUserId(casinoMembers[c].casino_user_id)};
-            
-            if (userIds.includes(casinoMembers[c].user_id)) casinoMembers[c] = {...casinoMembers[c] , ...usersCache[casinoMembers[c].user_id],
+        for (let c = 0; c < casinoMembers.length; c++) {
+            casinoMembers[c] = { ...casinoMembers[c], ...getByCasinoUserId(casinoMembers[c].casino_user_id) };
 
-                displayAvatarURL:    bot.verifiedMembers[casinoMembers[c]?.user_id]?.displayAvatarURL()
+            if (userIds.includes(casinoMembers[c].user_id)) casinoMembers[c] = {
+                ...casinoMembers[c], ...usersCache[casinoMembers[c].user_id],
+
+                displayAvatarURL: bot.verifiedMembers[casinoMembers[c]?.user_id]?.displayAvatarURL()
             };
             let cu = casinoMembers[c];
             cu.revenue = calcRevenue(cu.total_revenue, cu?.curr_revenue_checkpoint)
             cu.wager = calcRevenue(cu.total_wager, cu?.curr_wager_checkpoint)
             cu.reward = round(cu.revenue * parseFloat(settingsCache.revenueSharePercent));
-            
+
 
             if (casinoIds.length > 1) {
                 if (leaderboards.total[cu.user_id]) {
@@ -119,26 +120,24 @@ const getCasinoLeaderboards = (casinoIds = Object.keys(casinos)) => {
                     leaderboards.total[cu.user_id].reward += cu.reward;
                 }
                 else if (cu.user_id) {
-                    const { revenue, wager, reward,  user_id , username,discriminator, displayAvatarURL} = cu;
-                    
-                    leaderboards.total[cu.user_id] = { revenue,wager, reward, user_id ,username,discriminator, displayAvatarURL}
+                    const { revenue, wager, reward, user_id, username, discriminator, displayAvatarURL } = cu;
+
+                    leaderboards.total[cu.user_id] = { revenue, wager, reward, user_id, username, discriminator, displayAvatarURL }
 
                 }
             }
         }
         leaderboards.casinos[casino_id].leaderboard = casinoMembers.filter(cu => cu.user_id != null).toSorted((a, b) => b.wager - a.wager)
-        leaderboards.casinos[casino_id].leaderboard.forEach((cu,i)=>cu.rank=i+1);
+        leaderboards.casinos[casino_id].leaderboard.forEach((cu, i) => cu.rank = i + 1);
     }
-    leaderboards.total = Object.values(leaderboards.total).toSorted((a, b) => b.wager - a.wager)
-    leaderboards.total.forEach((cu,i)=>cu.rank=i+1);
+    leaderboards.total = {leaderboard:Object.values(leaderboards.total).toSorted((a, b) => b.wager - a.wager)}
+    leaderboards.total.leaderboard.forEach((cu, i) => cu.rank = i + 1);
     return leaderboards;
 }
 app.get(ROUTES.CASINOS, errorHandlerBuilder(async ({ query: { casino_id } }, res) => {
     if (Object.keys(casinos).includes(casino_id))
-        return res.json(getCasinoLeaderboards([casino_id]).casinos[casino_id]);
-    return res.json({
-        leaderboard: getCasinoLeaderboards().total
-    });
+        return res.json(getCasinoLeaderboards([casino_id]));
+    return res.json(getCasinoLeaderboards());
 }));
 
 
@@ -153,7 +152,7 @@ app.post(ROUTES.CASINOS, authenticate, errorHandlerBuilder(async ({ body: { casi
     });
 }));
 const round = val => Math.floor(parseFloat(val) * 100) / 100;
-const transaction = async ({ user_id, casinoId, amount}) => {
+const transaction = async ({ user_id, casinoId, amount }) => {
     amount = round(amount);
     if (isNaN(amount)) throw new ErrorCode(400, 'Redeem amount invalid');
     if (amount > 100) throw new ErrorCode(400, 'Redeem amount must not be more than 100');
@@ -171,7 +170,7 @@ const transaction = async ({ user_id, casinoId, amount}) => {
     return w;
 }
 
-const handleWithdrawal = async ({ wid, user_id, casino_id, casino_user_id,  amount }, approve) => {
+const handleWithdrawal = async ({ wid, user_id, casino_id, casino_user_id, amount }, approve) => {
     amount = parseFloat(amount);
     approve = approve && casinos[casino_id].data.allowWithdraw;
     if (approve) {
@@ -237,12 +236,12 @@ app.delete(ROUTES.MEMBERS, [authenticate, authenticateAdmin], errorHandlerBuilde
 const refreshRevenue = async () => {
     await refreshLeaderboardData();
     for await (let casinoData of Object.values(getCasinoLeaderboards().casinos)) {
-        for await (let { total_revenue, total_wager, reward, casino_id, total_reward, user_id, curr_revenue_checkpoint, prev_revenue_checkpoint, curr_wager_checkpoint, prev_wager_checkpoint  } of casinoData.leaderboard) {
+        for await (let { total_revenue, total_wager, reward, casino_id, total_reward, user_id, curr_revenue_checkpoint, prev_revenue_checkpoint, curr_wager_checkpoint, prev_wager_checkpoint } of casinoData.leaderboard) {
             await setCasinoUser({
                 casino_id, user_id,
                 prev_revenue_checkpoint: curr_revenue_checkpoint ?? prev_revenue_checkpoint,
                 curr_revenue_checkpoint: total_revenue,
-                
+
                 prev_wager_checkpoint: curr_wager_checkpoint ?? prev_wager_checkpoint,
                 curr_wager_checkpoint: total_wager,
 

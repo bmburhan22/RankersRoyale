@@ -8,7 +8,7 @@ import Carousel from 'react-spring-3d-carousel';
 import { config } from 'react-spring';
 import { useAuth } from '../utils/auth';
 import { ROUTES } from '../../utils/routes';
-
+import './styles.css';
 const casinoIds = ['500casino', 'razed'];
 
 // <Box sx={{ display: 'flex', justifyContent: 'center', alignContent: 'center', gap: { sm: 10, md: 20 }, paddingBlock: 20, paddingInline: 20, flexWrap: 'wrap', flexDirection: { sm: 'column', md: 'row' } }}>
@@ -32,42 +32,43 @@ const Home = () => {
   }, [casinoId, casinoUserIds]);
 
   return (
-    <Container sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100vh', width:'100vw', overflow: 'hidden', bgcolor: 'tomato' }} maxWidth={false} disableGutters>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: 1, width: 1, alignItems: 'center', overflow:'hidden', bgcolor: 'tomato' }} >
+      
       <AppBar position='static'><Toolbar>
         <Button variant='contained' href={API_URL + ROUTES.LOGIN}>Login</Button>
       </Toolbar></AppBar>
-<Box sx={{width:'75vw', height:1, py:1 }}> 
-     
-      <Carousel
-        animationConfig={config.stiff}
-        offsetRadius={1}
-        goToSlide={slide}
-        slides={[null, ...casinoIds].map((cid, i) => ({
-          onClick: () => setParams(!cid ? {} : { casino_id: cid }),
-          key: i, content:
-            <Casinos key={i} setCasinoUser={setCasinoUser} casinoUser={casinoUser} post={post} get={get} focused={casinoId == cid} casinoId={cid} />
-        }))}  
-  offsetFn={(offset ) => { 
-    if (offset  === 0) {
-      return {
-        opacity: 1,  
-        transform: "translateY(-50%) translateX(-50%) scale(1)",
-        left: "50%",
-      };
-    }
+      <Box sx={{ width: '75%'   , height: 1, py: 1 }}>
 
-     const isLeft = offset   < 0;
+        <Carousel
+          animationConfig={config.stiff}
+          offsetRadius={1}
+          goToSlide={slide}
+          slides={[null, ...casinoIds].map((cid, i) => ({
+            onClick: () => setParams(!cid ? {} : { casino_id: cid }),
+            key: i, content:
+              <Casinos key={i} setCasinoUser={setCasinoUser} casinoUser={casinoUser} post={post} get={get} focused={casinoId == cid} casinoId={cid} />
+          }))}
+          offsetFn={(offset) => {
+            if (offset === 0) {
+              return {
+                opacity: 1,
+                transform: "translateY(-50%) translateX(-50%) scale(1)",
+                left: "50%",
+              };
+            }
 
-    return {
-      opacity: 0.9, 
-      transform: isLeft
-        ? "translateY(-50%) translateX(30%) scale(0.9)" // For elements on the left
-        : "translateY(-50%) translateX(-130%) scale(0.9)", // For elements on the right
-    };
-  }}
-/>
-</Box>
-    </Container>
+            const isLeft = offset < 0;
+
+            return {
+              opacity: 0.9,
+              transform: isLeft
+                ? "translateY(-50%) translateX(30%) scale(0.9)" // For elements on the left
+                : "translateY(-50%) translateX(-130%) scale(0.9)", // For elements on the right
+            };
+          }}
+        />
+      </Box>
+    </Box>
   );
 };
 

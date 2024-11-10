@@ -6,7 +6,7 @@ import Casinos from './screens/Casinos';
 import AdminHome from './screens/AdminHome';
 import { ThemeProvider } from '@mui/material/styles';
 import { theme } from './config/theme';
-import { CssBaseline } from '@mui/material';
+import { CssBaseline, Container } from '@mui/material';
 
 function App() {
 
@@ -15,11 +15,13 @@ function App() {
       <AuthProvider>
         <ThemeProvider theme={theme}>
           <CssBaseline>
+          <Container sx={{ bgcolor: 'green', height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',  alignItems: 'center' }} disableGutters maxWidth={false}>
             <Routes>
               <Route path={ROUTES.HOME} element={<Home />} />
               <Route path={ROUTES.CASINOS_PAGE} element={<Casinos />} />
               <Route path={ROUTES.ADMIN_HOME} element={<AdminHome />} />
             </Routes>
+          </Container>
           </CssBaseline>
         </ThemeProvider>
       </AuthProvider>
