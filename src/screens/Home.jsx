@@ -20,7 +20,7 @@ const Home = () => {
   const [slide, setSlide] = useState();
   const [casinoUser, setCasinoUser] = useState();
 
-  const { post, get, casinoUserIds } = useAuth();
+  const { post, get, casinoUserIds , isAuth, logout} = useAuth();
   useEffect(
     () => {
       if (!casinoIds.includes(casinoId)) setParams();
@@ -32,12 +32,16 @@ const Home = () => {
   }, [casinoId, casinoUserIds]);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: 1, width: 1, alignItems: 'center', overflow:'hidden', bgcolor: 'tomato' }} >
-      
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: 1, width: 1, alignItems: 'center', overflow: 'hidden', bgcolor: 'tomato' }} >
+
       <AppBar position='static'><Toolbar>
-        <Button variant='contained' href={API_URL + ROUTES.LOGIN}>Login</Button>
-      </Toolbar></AppBar>
-      <Box sx={{ width: 1  , height: 1, py: 1 }}>
+
+        {
+          isAuth ?
+            <Button variant='contained' onClick={logout}>Logout</Button>
+            : <Button variant='contained' href={API_URL + ROUTES.LOGIN}>Login</Button>
+        }</Toolbar></AppBar>
+      <Box sx={{ width: 1, height: 1, py: 1 }}>
 
         <Carousel
           animationConfig={config.stiff}

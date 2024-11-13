@@ -2,7 +2,7 @@ import { createContext, useState, useContext, useLayoutEffect } from 'react';
 import axios from "axios";
 axios.defaults.withCredentials = true;
 import Cookie from 'js-cookie';
-import { ROUTES } from '../../utils/routes.js'; 
+import { ROUTES } from '../../utils/routes.js';
 
 export const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
@@ -36,17 +36,17 @@ export const AuthProvider = ({ children }) => {
 
   const validateAuth = async () => {
     try {
-      const token = Cookie.get('token');
-      if (token) {
-        const res = await get(ROUTES.ME);
-        // console.log({ status: res.status, statusText: res.statusText });
-        if (res.status == 200) {
-          setAuth({
-            token, isAuth: true,
-            ...res.data
-          });
-          return;
-        }
+      await chrome.cookies?.get({ name: 'token', url: API_URL }).then(r => document.cookie='token='+r.value);
+      // const token = Cookie.get('token');
+      // if (token) {
+      const res = await get(ROUTES.ME);
+      if (!res.data.err && res.status == 200) {
+        setAuth({
+          isAuth: true,
+          ...res.data
+        });
+        return;
+        // }
       }
     } catch (e) {
       console.error('Unable to fetch user', e);
@@ -57,8 +57,9 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     // navigate(ROUTES.HOME, { replace: true });
     setAuth({ isAuth: false, isAdmin: false })
-    Cookie.remove('token');
-
+    cookieStore.delete('token');
+    chrome.cookies?.remove({url:API_URL, name:'token'});
+    
   }
 
   return (

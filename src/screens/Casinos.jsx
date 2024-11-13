@@ -118,7 +118,7 @@ const Casinos = ({ get, post, focused, casinoUser, setCasinoUser, casinoId }) =>
         hideFooter
         sx={{
           '& ::-webkit-scrollbar': { display: 'none' },
-          border: 0,
+          border: 0,width:1,
           pointerEvents: 'none',
           '& .MuiDataGrid-columnSeparator': { display: 'none', },
 
