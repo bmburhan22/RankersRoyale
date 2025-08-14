@@ -1,5 +1,3 @@
-
-import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
 import express, { json } from 'express';
@@ -18,11 +16,10 @@ import {
 } from './utils/db.js';
 import cron from 'node-cron';
 import { balances, casinos, refreshLeaderboardData } from './utils/casinos.js';
-
+import { PORT, JWT_SECRET, DISCORD_ADMIN_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET } from './config.js';
 
 import { readFileSync } from 'fs';
-dotenv.config();
-const { PORT, JWT_SECRET, DISCORD_ADMIN_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET } = process.env;
+
 const app = express();
 const VITE_PATH = path.join(path.resolve(), 'dist');
 app.use(express.static(VITE_PATH, { index: false }));

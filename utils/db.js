@@ -1,8 +1,6 @@
 import 'pg';
 import { Sequelize, STRING, INTEGER, DECIMAL } from "sequelize";
-import dotenv from 'dotenv';
-dotenv.config();
-const { DB_URL } = process.env;
+import { DB_URL } from '../config.js';
 const sq = new Sequelize(DB_URL, { define: { freezeTableName: true, timestamps: false } });
 
 

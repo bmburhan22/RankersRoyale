@@ -1,7 +1,5 @@
 import { Client, GatewayIntentBits } from 'discord.js';
-import dotenv from 'dotenv';
-dotenv.config();
-const { TOKEN, DISCORD_GUILD_ID, DISCORD_ROLE_ID } = process.env;
+import { TOKEN, DISCORD_GUILD_ID, DISCORD_ROLE_ID } from '../config.js';
 const bot = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
 bot.login(TOKEN);
 bot.verifiedMembers = [];

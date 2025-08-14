@@ -1,12 +1,8 @@
 import axios from "axios";
-import dotenv from 'dotenv';
 import cron from 'node-cron';
-dotenv.config();
-const { API_KEY_500, API_KEY_RAZED, API_KEY_RAZED_REF, ZENROWS_KEY } = process.env;
-const zenapi = (method, url, headers, data) => axios({
-    method, headers, data, url: 'https://api.zenrows.com/v1/',
-    params: { url, 'apikey': ZENROWS_KEY, 'premium_proxy': true, 'proxy_country': 'de', 'custom_headers': true },
-});
+
+import { API_KEY_500, API_KEY_RAZED, API_KEY_RAZED_REF} from '../config.js';
+
 export const casinos = {
     '500casino': await (new class _500casino {
         transactionCurrencies = ['eth', 'usdt'];
