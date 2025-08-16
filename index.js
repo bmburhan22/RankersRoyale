@@ -15,7 +15,7 @@ import {
     settingsCache, setUser, updateWithdrawal, usersCache, withdrawalsCache
 } from './utils/db.js';
 import cron from 'node-cron';
-import { balances, casinos, refreshLeaderboardData } from './utils/casinos.js';
+import { getWithdrawableBalances, casinos, refreshLeaderboardData } from './utils/casinos.js';
 import { PORT, JWT_SECRET, DISCORD_ADMIN_ROLE_ID, REDIRECT, REDIRECT_URI, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_OAUTH2_URL } from './config.js';
 
 import { readFileSync } from 'fs';
@@ -137,7 +137,7 @@ app.get(ROUTES.CASINOS, errorHandlerBuilder(async ({ query: { casino_id } }, res
 
 
 app.post(ROUTES.CASINOS, authenticate, errorHandlerBuilder(async ({ body: { casino_id, casino_user_id } }, res) => {
-    if (!casinos[casino_id]) throw new ErrorCode(403, 'Invalid casino');
+    if (!casinos[casino_id]) throw new ErrorCode(403, `Invalid casino ${casino_id}`);
     if (getByCasinoUserId(casino_user_id)) throw new ErrorCode(403, 'Casino ID already linked');
     const user_casino = await setCasinoUser({ user_id: res.locals.member.id, casino_id, casino_user_id });
 
@@ -191,7 +191,7 @@ const approveWithdrawals = async () => {
     }
 }
 app.get(ROUTES.WITHDRAWALS, [authenticate, authenticateAdmin], errorHandlerBuilder(async (req, res) => res.json(
-    { transactions: getWithdrawals(), balances: balances() }
+    { transactions: getWithdrawals(), balances: getWithdrawableBalances() }
 )));
 app.post(ROUTES.WITHDRAWALS, [authenticate, authenticateAdmin], errorHandlerBuilder(async ({ body: { wid, approve } }, res) => {
     if (!withdrawalsCache[wid]) throw new ErrorCode(400, 'Transaction not found');
@@ -199,7 +199,7 @@ app.post(ROUTES.WITHDRAWALS, [authenticate, authenticateAdmin], errorHandlerBuil
     if (approve == null) throw new ErrorCode(400, 'Specify approval true/false');
     await handleWithdrawal(withdrawalsCache[wid], approve);
     return res.json(
-        { transactions: getWithdrawals(), balances: balances() });
+        { transactions: getWithdrawals(), balances: getWithdrawableBalances() });
 }));
 
 app.post(ROUTES.CLAIM_REWARD, authenticate, errorHandlerBuilder(async (req, res) => res.json(await transaction({ ...req.body, user_id: res.locals.member.id, }))));

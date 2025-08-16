@@ -28,8 +28,6 @@ export const casinos = {
             let resp = { success: false };
             for await (let balanceType of this.balanceTypes) {
                 try {
-                    console.log('500 transaction trying', balanceType);
-
                     const r = await axios.post('https://tradingapi.500.casino/api/v1/user/balance/send',
                         { destinationUserId, value: value * this.data.inverseRate, balanceType }, { headers: this.headers, })
                     resp = { success: true, ...r.data };
@@ -62,8 +60,6 @@ export const casinos = {
 
 
     }().init()),
-
-
 
     'razed': await (new class Razed {
         constructor() { this.data = {}; }
@@ -127,6 +123,6 @@ export const refreshLeaderboardData = async () => {
         await casino.getBalance();
     }
 }
-export const balances = () => Object.values(casinos).reduce((bal, casino) => !casino.data.allowWithdraw ? bal : [...bal, ...casino.data.balances], [])
+export const getWithdrawableBalances = () => Object.values(casinos).reduce((bal, casino) => !casino.data.allowWithdraw ? bal : [...bal, ...casino.data.balances], [])
 refreshLeaderboardData();
 cron.schedule('* * * * *', refreshLeaderboardData);
