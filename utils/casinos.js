@@ -22,7 +22,7 @@ export const casinos = {
                     total_revenue: parseFloat(this.data?.rate) * parseFloat(u.totalRevenue),
                     total_wager: parseFloat(this.data?.rate) * parseFloat(u.totalPlayed),
                 }));
-            } catch (e) { console.log(e) }
+            } catch (e) { console.error(e) }
         };
         sendBalance = async (destinationUserId, value) => {
             let resp = { success: false };
@@ -38,7 +38,7 @@ export const casinos = {
                     break;
                 } catch (err) {
                     resp = { ...err.response?.data, success: false };
-                    console.log('500 transaction failed', balanceType);
+                    console.error('500 transaction failed', balanceType);
                     continue;
                 }
             }
@@ -78,7 +78,7 @@ export const casinos = {
                 await this.getLeaderboard();
                 return this;
             }).catch(c => {
-                console.log(c);
+                console.error(c);
                 return this;
             });
         getLeaderboard = async () => {
@@ -93,7 +93,7 @@ export const casinos = {
                     total_revenue: parseFloat(this.data?.rate) * parseFloat(u.wagered),
                     total_wager: parseFloat(this.data?.rate) * parseFloat(u.wagered),
                 }));
-            } catch (e) { console.log(e) }
+            } catch (e) { console.error(e) }
         };
 
         sendBalance = async (receiver_username, amount) => {
@@ -105,7 +105,7 @@ export const casinos = {
                 },
             )
                 .then(async r => ({ success: true, ...await r.json() }))
-                .catch(err => { console.log(err); return { ...err, success: false } })
+                .catch(err => { console.error(err); return { ...err, success: false } })
                 .finally(async d => { await this.getBalance(); return d; })
 
                 ;
@@ -117,7 +117,7 @@ export const casinos = {
             .then(d => {
                 this.data.balances = [{ casino_id: 'razed', currency_type: 'usd', value: parseFloat(d?.[0]?.balance) }];
             })
-            .catch(err => { console.log(err); return err });
+            .catch(err => { console.error(err); return err });
 
     }().init())
 }

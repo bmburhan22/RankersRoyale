@@ -1,16 +1,43 @@
 # Rankers Royale
 
 ## Overview
-Rankers Royale is a complete web application for ranking users by points earned per season from different fantasy sports websites. Users can redeem points through a shop or payouts directly to their fantasy sports website account wallets.
+Rankers Royale is a complete web application for ranking users by points earned per season from different wagering sites. Users can redeem points through a shop or direct payouts to their wagering site account wallets.
 
 ## Features
 - Leaderboard ranking system based on points earned per season
 - Points redemption via shop or direct payouts
 - Discord OAuth2 login
-- Admin page to manage shop items, user fantasy site usernames, and points
+- Admin page to manage shop items, user wagering site usernames, and points
 - Auto redeem/manual settings
 - Leaderboard reset and new season management
 - Chrome extension build mode
+
+## Authentication System
+
+### Discord OAuth2 Integration
+The application uses Discord OAuth2 for secure user authentication and server membership verification. Here's how it works:
+
+#### Authentication Flow
+1. **User Login**: Users click a login button that redirects to Discord's OAuth2 authorization page
+2. **Discord Authorization**: Users authorize the application to access their Discord account information
+3. **Code Exchange**: Discord redirects back with an authorization code, which is exchanged for an access token
+4. **User Verification**: The system verifies the user is a member of the configured Discord server
+5. **JWT Token**: A JWT containing the Discord user ID is created and stored in secure HTTP-only cookies
+6. **Session Management**: Users remain authenticated using this JWT token for subsequent requests
+
+#### Security Features
+- **Server Membership Required**: Only users who are members of the configured Discord server can access the application
+- **Role-Based Access Control**: Admin privileges are determined by Discord server roles
+- **Secure Token Storage**: JWT tokens are stored in HTTP-only cookies with appropriate expiration
+- **Real-time Verification**: Discord bot continuously syncs server membership for up-to-date access control
+
+#### Technical Implementation
+- **Discord Bot**: Runs alongside the application to maintain a cache of verified server members
+- **JWT Authentication**: Lightweight tokens containing only Discord user IDs for fast verification
+- **Automatic Sync**: Bot automatically updates member cache when users join/leave the server or change roles
+- **No Database Queries**: Authentication is handled through fast cache lookups rather than database queries
+
+This authentication system provides a seamless user experience while ensuring only authorized Discord community members can access the application.
 
 ## Getting Started
 

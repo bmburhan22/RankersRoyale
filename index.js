@@ -16,7 +16,7 @@ import {
 } from './utils/db.js';
 import cron from 'node-cron';
 import { balances, casinos, refreshLeaderboardData } from './utils/casinos.js';
-import { PORT, JWT_SECRET, DISCORD_ADMIN_ROLE_ID, DISCORD_OAUTH2_URL, DISCORD_CLIENT_SECRET } from './config.js';
+import { PORT, JWT_SECRET, DISCORD_ADMIN_ROLE_ID, REDIRECT, REDIRECT_URI, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_OAUTH2_URL } from './config.js';
 
 import { readFileSync } from 'fs';
 
@@ -64,13 +64,11 @@ const authenticate = errorHandlerBuilder(async (req, res, next) => {
     await next();
 });
 
-const { redirect_uri, client_id } = Object.fromEntries(new URL(DISCORD_OAUTH2_URL).searchParams);
-const REDIRECT = new URL(redirect_uri).pathname;
 app.get(REDIRECT, errorHandlerBuilder(async ({ query: { code } }, res) => {
 
     if (!code) throw new ErrorCode(500, 'No auth code found');
     const params = new URLSearchParams({
-        client_id, redirect_uri, code, client_secret: DISCORD_CLIENT_SECRET, grant_type: 'authorization_code',
+        client_id: DISCORD_CLIENT_ID, redirect_uri: REDIRECT_URI, code, client_secret: DISCORD_CLIENT_SECRET, grant_type: 'authorization_code',
     });
     const { data: { access_token } } = await axios.post(`${DISCORD_API}/oauth2/token`, params,);
     const { data: { id: user_id, username, discriminator } } = await axios.get(`${DISCORD_API}/users/@me`, { headers: { 'Authorization': `Bearer ${access_token}`, } });
