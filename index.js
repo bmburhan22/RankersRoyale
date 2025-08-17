@@ -15,8 +15,8 @@ import {
     settingsCache, setUser, updateWithdrawal, usersCache, withdrawalsCache
 } from './utils/db.js';
 import cron from 'node-cron';
-import { getWithdrawableBalances, casinos, refreshLeaderboardData } from './utils/casinos.js';
-import { PORT, JWT_SECRET, DISCORD_ADMIN_ROLE_ID, REDIRECT, REDIRECT_URI, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_OAUTH2_URL } from './config.js';
+import { getWithdrawableBalances, casinos, refreshLeaderboardData, validCasinoIds } from './utils/casinos.js';
+import { PORT, JWT_SECRET, DISCORD_ADMIN_ROLE_ID, REDIRECT, REDIRECT_URI, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_OAUTH2_URL, timezone } from './config.js';
 
 import { readFileSync } from 'fs';
 
@@ -82,13 +82,13 @@ const memberToUser = (member) => {
 
     return {
         isAdmin, username, discriminator, globalName, nickname, displayAvatarURL, userId, casinoUserIds:
-            Object.keys(casinos).reduce((obj, casino_id) => { obj[casino_id] = getCasinoUser({ user_id: userId, casino_id }); return obj; }, {})
+            validCasinoIds.reduce((obj, casino_id) => { obj[casino_id] = getCasinoUser({ user_id: userId, casino_id }); return obj; }, {})
     };
 }
 app.get(ROUTES.ME, authenticate, errorHandlerBuilder(async (req, res) => res.json(memberToUser(res.locals.member))));
 
 const calcRevenue = (total, checkpoint) => Math.max(0, total - (checkpoint ?? total))
-const getCasinoLeaderboards = (casinoIds = Object.keys(casinos)) => {
+const getCasinoLeaderboards = (casinoIds = validCasinoIds) => {
     let leaderboards = { 'casinos': {}, total: {} };
     const userIds = Object.keys(bot.verifiedMembers);
     for (let casino_id of casinoIds) {
@@ -130,7 +130,7 @@ const getCasinoLeaderboards = (casinoIds = Object.keys(casinos)) => {
     return leaderboards;
 }
 app.get(ROUTES.CASINOS, errorHandlerBuilder(async ({ query: { casino_id } }, res) => {
-    if (Object.keys(casinos).includes(casino_id))
+    if (validCasinoIds.includes(casino_id))
         return res.json(getCasinoLeaderboards([casino_id]));
     return res.json(getCasinoLeaderboards());
 }));
@@ -210,7 +210,7 @@ const scheduleWithdrawTask = async () => {
     const scheduled = withdrawApprovalMode == 'auto';
     console.log({ valid: cron.validate(withdrawCronExpression), withdrawApprovalMode, scheduled, withdrawCronExpression });
     withdrawTask?.stop();
-    withdrawTask = (!scheduled || !cron.validate(withdrawCronExpression)) ? null : cron.schedule(withdrawCronExpression, approveWithdrawals, { timezone: 'ist', scheduled });
+    withdrawTask = (!scheduled || !cron.validate(withdrawCronExpression)) ? null : cron.schedule(withdrawCronExpression, approveWithdrawals, { timezone, scheduled });
     withdrawTask?.start();
 }
 scheduleWithdrawTask();
@@ -258,7 +258,7 @@ const scheduleTask = async () => {
     const scheduled = resetMode == 'auto';
     console.log({ valid: cron.validate(cronExpression), resetMode, scheduled, cronExpression });
     task?.stop();
-    task = (!scheduled || !cron.validate(cronExpression)) ? null : cron.schedule(cronExpression, refreshRevenue, { timezone: 'ist', scheduled });
+    task = (!scheduled || !cron.validate(cronExpression)) ? null : cron.schedule(cronExpression, refreshRevenue, { timezone, scheduled });
     task?.start();
 
 }

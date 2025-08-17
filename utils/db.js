@@ -1,7 +1,12 @@
 import 'pg';
 import { Sequelize, STRING, INTEGER, DECIMAL } from "sequelize";
-import { DB_URL } from '../config.js';
-const sq = new Sequelize(DB_URL, { define: { freezeTableName: true, timestamps: false } });
+import { POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB } from '../config.js';
+
+// Create DB if not exists
+const DB_SERVER_URI = `postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}`;
+await new Sequelize(`${DB_SERVER_URI}/postgres`, { logging: false }).query(`CREATE DATABASE "${POSTGRES_DB}"`).catch(() => {});
+
+const sq = new Sequelize(`${DB_SERVER_URI}/${POSTGRES_DB}`, { define: { freezeTableName: true, timestamps: false } });
 
 
 // ==============USERSCASINOS================

@@ -1,5 +1,6 @@
 import 'dotenv/config';
 const {
+    MODE,
     HOST,
     PORT,
     REDIRECT,
@@ -22,11 +23,17 @@ const {
 
 const REDIRECT_URI = new URL(REDIRECT, `https://${HOST}:${PORT}`).toString();
 const DISCORD_OAUTH2_URL = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=identify+guilds`;
-const DB_URL = `postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}`;
+const timezone = 'kwt';
 
 export {
+    MODE,
     HOST,
     PORT,
+    POSTGRES_HOST,
+    POSTGRES_PORT,
+    POSTGRES_USER,
+    POSTGRES_PASSWORD,
+    POSTGRES_DB,
     REDIRECT,
     REDIRECT_URI,
     JWT_SECRET,
@@ -39,5 +46,6 @@ export {
     TOKEN,
     DISCORD_GUILD_ID,
     DISCORD_ROLE_ID,
-    DISCORD_OAUTH2_URL, DB_URL,
+    DISCORD_OAUTH2_URL,
+    timezone,
 };
