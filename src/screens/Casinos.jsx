@@ -8,7 +8,6 @@ import { Container, Tab, Tabs, CssBaseline, Box, TextField, Button, Divider, Sel
 import { DataGrid, GridActionsCellItem, GridAddIcon } from '@mui/x-data-grid';
  
 import { green, grey, teal } from '@mui/material/colors';
-import { ld } from '../config/constants';
 
 import { Input, InputNumber } from 'antd';
 const bg = {
@@ -30,7 +29,6 @@ const Casinos = ({ get, post, focused, casinoUser, setCasinoUser, casinoId }) =>
   const getLeadboard = async () => setLeaderboard(
     await get(ROUTES.CASINOS + (!casinoId ? '' : `?casino_id=${casinoId}`)).then(({ data }) =>
     !casinoId ? data.total : data.casinos[casinoId]
-    // !casinoId ? ld.total : ld.casinos[casinoId] //TODO: constant lederboard
     )
 
   );
@@ -88,13 +86,13 @@ const Casinos = ({ get, post, focused, casinoUser, setCasinoUser, casinoId }) =>
       </Box>
 
 
-      <Top3 key={1} cu={leaderBoard?.leaderboard?.[0]} />
+      <Top3 key={1} cu={leaderBoard?.leaderboard?.[0]} isTotal={!casinoIds.includes(casinoId) } />
 
       <Box sx={{
         display: 'flex', flexWrap: 'wrap', flexDirection: { md: 'row', xs: 'column' }, justifyContent: 'center', alignItems: 'center', gap: 5, paddingBlock: 5, paddingInline: 5
       }}>
         {leaderBoard?.leaderboard?.slice(1, 3).map(
-          cu => <Top3 key={cu?.rank} cu={cu} />
+          cu => <Top3 key={cu?.rank} cu={cu} isTotal={!casinoIds.includes(casinoId)} />
         )}
       </Box>
 

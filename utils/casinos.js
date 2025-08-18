@@ -1,16 +1,14 @@
 import axios from "axios";
-import cron from 'node-cron';
 import { API_KEY_500, API_KEY_RAZED, API_KEY_RAZED_REF, MODE} from '../config.js';
-import { buildDemoCasinos } from './demoCasinos.js';
 
 let casinos;
 switch(MODE){
     case 'DEMO':
-        casinos = buildDemoCasinos();
+        casinos = (await import('./demoCasinos.js')).buildDemoCasinos();
         break;
     case 'PROD':
         casinos = {
-            '500casino': await (new class _500casino {
+            '500casino': new class _500casino {
                 headers = { 'x-500-auth': API_KEY_500 }
                 boot = () => axios.get('https://500.casino/api/boot', { headers: this.headers })
                 constructor() { 
@@ -70,9 +68,9 @@ switch(MODE){
                     }).catch(c => this);
 
 
-            }().init()),
+            }(),
 
-            'razed': await (new class Razed {
+            'razed': new class Razed {
                 constructor() { this.data = {allowWithdraw:true}; }
                 init = async () => await fetch('https://api.razed.com/player/api/v1/profile',
                     {
@@ -128,11 +126,17 @@ switch(MODE){
                     })
                     .catch(err => { console.error(err); return err });
 
-            }().init())
+            }()
         }
         break;
 }
 const validCasinoIds = Object.keys(casinos);
+
+const initCasinos = async () => {
+    for await (const casino of Object.values(casinos)) {
+        await casino.init?.();
+    }
+}
 
 const refreshLeaderboardData = async () => {
     for await (const casino of Object.values(casinos)) {
@@ -143,6 +147,4 @@ const refreshLeaderboardData = async () => {
 
 const getWithdrawableBalances = () => Object.values(casinos).reduce((bal, casino) => !casino.data.allowWithdraw ? bal : [...bal, ...casino.balances], []) // used by admin
 
-await refreshLeaderboardData();
-cron.schedule('* * * * *', refreshLeaderboardData);
-export {casinos, getWithdrawableBalances, refreshLeaderboardData, validCasinoIds}
+export { casinos, initCasinos, getWithdrawableBalances, refreshLeaderboardData, validCasinoIds }

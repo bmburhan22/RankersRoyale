@@ -1,11 +1,22 @@
+import {promises as fs} from 'fs';
+const sampleDataFilename = 'utils/sampledata.json';
+
+const saveData = async data => fs.writeFile(sampleDataFilename, JSON.stringify(data, null, 2));
+const loadData = async () => fs.readFile(sampleDataFilename, 'utf8').then(JSON.parse);
+
+async function tippingAPI(casino_id, receiver_id, amount, currency){
+    const data = await loadData();
+    const me = data[casino_id].me;
+    const receiver = data[casino_id][receiver_id];
+    if (me[currency] < amount) 
+        return {success: false, message: 'Insufficient funds', data:{balance:me[currency], balanceType:currency}};
+    me[currency] -= amount;
+    receiver[currency] += amount;
+    await saveData(data);
+    return {success: true, me, receiver};
+}
+
 export const buildDemoCasinos = () => {
-    function tippingAPI(me, receiver, amount, currency){
-        if (me[currency] < amount) 
-            return {success: false, message: 'Insufficient funds', data:{balance:me[currency], balanceType:currency}};
-        me[currency] -= amount;
-        receiver[currency] += amount;
-        return {success: true, me, receiver};
-    }
     return {
         '500casino': new class _500casino {
             constructor() { 
@@ -13,37 +24,21 @@ export const buildDemoCasinos = () => {
                     allowWithdraw: true,
                     referralLink: "https://500.casino/r/ABC500",
                 }; 
-                this.balanceTypes=['usdt','eth'],
-                this.users={
-                    me:{usdt:5_100_030, eth:423_400_000_000},
-                    floppy12:{usdt:100_000, eth:100_000},
-                    qwerty:{usdt:100_000, eth:100_000},
-                };
-                this.referrals=[
-                    {
-                        casino_user_id: 'floppy12',
-                        total_revenue: 100_000,
-                        total_wager: 100_000,
-                    },
-                    {
-                        casino_user_id: 'qwerty',
-                        total_revenue: 5500_000,
-                        total_wager: 52100_000,
-                    },
-
-                ];
+                this.balanceTypes=['usdt','eth'];
             }
             getLeaderboard = async () => {
                 try {
+                    const data = await loadData();
+                    const {me, ...casino} = data['500casino'];
+                    this.leaderboard = Object.entries(casino).map(([casino_user_id, {total_revenue, total_wager}])=>({casino_user_id, total_revenue, total_wager})).sort((a,b)=>b.total_revenue-a.total_revenue);
                     this.data.datetime = new Date(Date.now()).toISOString();
-                    this.leaderboard = this.referrals.sort((a,b)=>b.total_revenue-a.total_revenue);
                 } catch (e) { console.error(e) }
             };
             sendBalance = async (destinationUserId, value) => {
                 let resp = { success: false };
                 for await (let balanceType of this.balanceTypes) {
                     try {
-                        const r = tippingAPI(this.users.me, this.users[destinationUserId], value, balanceType);
+                        const r = await tippingAPI('500casino', destinationUserId, value, balanceType);
                         resp = { success: true, ...r.data };
                         console.log(r);
                         if (!resp.success) throw new Error();
@@ -56,7 +51,8 @@ export const buildDemoCasinos = () => {
                 return resp;
             }
             getBalance = async () => {
-                this.balances = this.balanceTypes.map(currency_type => ({  casino_id: '500casino',currency_type, value: this.users.me[currency_type] }));
+                const data = await loadData();
+                this.balances = this.balanceTypes.map(currency_type => ({  casino_id: '500casino',currency_type, value: data['500casino'].me[currency_type] }));
                 return this;
             };
 
@@ -70,45 +66,24 @@ export const buildDemoCasinos = () => {
                     referralLink: "https://www.razed.com/signup/?raf=RAZREF123",
                 }; 
                 this.balanceTypes=['usd'];
-                this.users={
-                    me:{usd:5_100_030},
-                    gary:{usd:100_000},
-                    raz1:{usd:400_000},
-                    raz2:{usd:700_000},
-                };
-                this.referrals=[
-                    {
-                        casino_user_id: 'raz1',
-                        total_revenue: 520_000,
-                        total_wager: 620_000,
-                    },
-                    {
-                        casino_user_id: 'raz2',
-                        total_revenue: 520_000,
-                        total_wager: 620_000,
-                    },
-                    {
-                        casino_user_id: 'gary',
-                        total_revenue: 520_000,
-                        total_wager: 620_000,
-                    },
-
-                ];
             }
             getLeaderboard = async () => {
                 try {
+                    const data = await loadData();
+                    const {me, ...casino} = data['razed'];
+                    this.leaderboard = Object.entries(casino).map(([casino_user_id, {total_revenue, total_wager}])=>({casino_user_id, total_revenue, total_wager})).sort((a,b)=>b.total_revenue-a.total_revenue);
                     this.data.datetime = new Date(Date.now()).toISOString();
-                    this.leaderboard = this.referrals.sort((a,b)=>b.total_revenue-a.total_revenue);
                 } catch (e) { console.error(e) }
             };
             sendBalance = async (destinationUserId, value) => {
-                const resp = tippingAPI(this.users.me, this.users[destinationUserId], value, this.balanceTypes[0]);
+                const resp = await tippingAPI('razed', destinationUserId, value, this.balanceTypes[0]);
                 console.log(resp);
                 await this.getBalance(); 
                 return resp;
             }
             getBalance = async () => {
-                    this.balances = this.balanceTypes.map(currency_type => ({  casino_id: 'razed',currency_type, value: this.users.me[currency_type] }));
+                const data = await loadData();
+                this.balances = this.balanceTypes.map(currency_type => ({  casino_id: 'razed',currency_type, value: data['razed'].me[currency_type] }));
                     return this;
             };
         }(),

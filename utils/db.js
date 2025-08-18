@@ -6,7 +6,7 @@ import { POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRE
 const DB_SERVER_URI = `postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}`;
 await new Sequelize(`${DB_SERVER_URI}/postgres`, { logging: false }).query(`CREATE DATABASE "${POSTGRES_DB}"`).catch(() => {});
 
-const sq = new Sequelize(`${DB_SERVER_URI}/${POSTGRES_DB}`, { define: { freezeTableName: true, timestamps: false } });
+const sq = new Sequelize(`${DB_SERVER_URI}/${POSTGRES_DB}`, { logging: false, define: { freezeTableName: true, timestamps: false } });
 
 
 // ==============USERSCASINOS================

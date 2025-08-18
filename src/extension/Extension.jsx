@@ -3,7 +3,6 @@ import { AppBar, Link, Box, Button, Container, IconButton, Paper, Slide, Toolbar
 
 import { Menu } from '@mui/icons-material';
 import { useAuth } from '../utils/auth';
-import { cuids, ld, uid } from '../config/constants';
 import Ranking from './Ranking';
 import Reward from './Reward';
 import { ROUTES } from '../../utils/routes';
@@ -13,15 +12,13 @@ const casinoIds = ['500casino', 'razed'];
 const Extension = () => {
   const [leaderBoard, setLeaderboard] = useState([]);
   const { post, get, logout, isAuth, nickname, globalName, username, discriminator, displayAvatarURL,
-    casinoUserIds// = cuids
-    , userId //= uid
+    casinoUserIds
+    , userId
   } = useAuth();
   console.log({ userId });
 
-  //TODO: constant cuids
   const getLeadboard = async () => setLeaderboard(
     (await get(ROUTES.CASINOS))?.data,
-    // ld  //TODO: constant lederboard
   )
 
   const casinoUsers = Object.values(casinoUserIds??{}).map(({ casino_id }) =>

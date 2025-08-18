@@ -15,10 +15,15 @@ import {
     settingsCache, setUser, updateWithdrawal, usersCache, withdrawalsCache
 } from './utils/db.js';
 import cron from 'node-cron';
-import { getWithdrawableBalances, casinos, refreshLeaderboardData, validCasinoIds } from './utils/casinos.js';
+import { getWithdrawableBalances, casinos, refreshLeaderboardData, initCasinos, validCasinoIds } from './utils/casinos.js';
 import { PORT, JWT_SECRET, DISCORD_ADMIN_ROLE_ID, REDIRECT, REDIRECT_URI, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_OAUTH2_URL, timezone } from './config.js';
 
 import { readFileSync } from 'fs';
+
+// Init casinos data
+await initCasinos();
+await refreshLeaderboardData();
+cron.schedule('* * * * *', refreshLeaderboardData);
 
 const app = express();
 const VITE_PATH = path.join(path.resolve(), 'dist');
@@ -91,9 +96,10 @@ const calcRevenue = (total, checkpoint) => Math.max(0, total - (checkpoint ?? to
 const getCasinoLeaderboards = (casinoIds = validCasinoIds) => {
     let leaderboards = { 'casinos': {}, total: {} };
     const userIds = Object.keys(bot.verifiedMembers);
-    for (let casino_id of casinoIds) {
-        leaderboards.casinos[casino_id] = casinos[casino_id].data;
-        let casinoMembers = casinos[casino_id].leaderboard;//TODO: casinoMembers is not a copy
+    for (const casino_id of casinoIds) {
+        const casinoObject = JSON.parse(JSON.stringify(casinos[casino_id]));
+        leaderboards.casinos[casino_id] = casinoObject.data;
+        let casinoMembers = casinoObject.leaderboard;
         for (let c = 0; c < casinoMembers.length; c++) {
             casinoMembers[c] = { ...casinoMembers[c], ...getByCasinoUserId(casinoMembers[c].casino_user_id) };
 
@@ -122,7 +128,9 @@ const getCasinoLeaderboards = (casinoIds = validCasinoIds) => {
                 }
             }
         }
+        console.log({casinoMembers});
         leaderboards.casinos[casino_id].leaderboard = casinoMembers.filter(cu => cu.user_id != null).toSorted((a, b) => b.wager - a.wager)
+        console.log({leaderboards:leaderboards.casinos[casino_id].leaderboard});
         leaderboards.casinos[casino_id].leaderboard.forEach((cu, i) => cu.rank = i + 1);
     }
     leaderboards.total = {leaderboard:Object.values(leaderboards.total).toSorted((a, b) => b.wager - a.wager)}

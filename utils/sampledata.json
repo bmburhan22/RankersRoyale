@@ -1,0 +1,57 @@
+{
+    "500casino": {
+        "me": {
+            "usdt": 5100030,
+            "eth": 423400000000
+        },
+        "floppy12": {
+            "usdt": 100000,
+            "eth": 100000,
+            "total_revenue": 5500000,
+            "total_wager": 52100000
+        },
+        "qwerty": {
+            "usdt": 100000,
+            "eth": 100000,
+            "total_revenue": 820000,
+            "total_wager": 6040000
+        },
+        "james": {
+            "usdt": 100000,
+            "eth": 100000,
+            "total_revenue": 520000,
+            "total_wager": 620000
+        },
+        "five5": {
+            "usdt": 100000,
+            "eth": 100000,
+            "total_revenue": 820000,
+            "total_wager": 6040000
+        }
+    },
+    "razed": {
+        "me": {
+            "usd": 5100030
+        },
+        "gary": {
+            "usd": 100000,
+            "total_revenue": 520000,
+            "total_wager": 620000
+        },
+        "raz1": {
+            "usd": 400000,
+            "total_revenue": 520000,
+            "total_wager": 620000
+        },
+        "raz2": {
+            "usd": 700000,
+            "total_revenue": 520000,
+            "total_wager": 620000
+        },
+        "raz3": {
+            "usd": 100000,
+            "total_revenue": 520000,
+            "total_wager": 620000
+        }
+    }
+}
