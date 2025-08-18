@@ -5,11 +5,10 @@
   "type": "module",
   "scripts": {
     "start": "npm run build && node ./index",
-    "dev": "vite",
+    "dev": "npm run build & nodemon",
     "devext": "vite --mode=ext",
-    "buildapp": "vite build",
+    "build": "vite build",
     "buildext": "vite build --mode=ext",
-    "build": "npm run buildapp && npm run buildext",
     "lint": "eslint .",
     "preview": "vite preview"
   },
