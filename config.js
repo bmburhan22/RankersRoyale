@@ -19,6 +19,8 @@ const {
     POSTGRES_USER,
     POSTGRES_PASSWORD,
     POSTGRES_DB,
+    CLIENT_HOST,
+    CLIENT_PORT,
 } = process.env;
 
 const REDIRECT_URI = new URL(REDIRECT, `https://${HOST}:${PORT}`).toString();
@@ -48,4 +50,6 @@ export {
     DISCORD_ROLE_ID,
     DISCORD_OAUTH2_URL,
     timezone,
+    CLIENT_HOST,
+    CLIENT_PORT,
 };

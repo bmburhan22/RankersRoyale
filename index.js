@@ -3,8 +3,8 @@ import axios from 'axios';
 import express, { json } from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-import path from 'path';
-import { ROUTES, CLIENT_ROUTES, DISCORD_API } from './utils/routes.js';
+// import path from 'path';
+import { ROUTES, DISCORD_API } from './utils/routes.js';
 import bot from './utils/discordBot.js';
 import https from 'https';
 import {
@@ -16,7 +16,7 @@ import {
 } from './utils/db.js';
 import cron from 'node-cron';
 import { getWithdrawableBalances, casinos, refreshLeaderboardData, initCasinos, validCasinoIds } from './utils/casinos.js';
-import { PORT, JWT_SECRET, DISCORD_ADMIN_ROLE_ID, REDIRECT, REDIRECT_URI, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_OAUTH2_URL, timezone } from './config.js';
+import { PORT, JWT_SECRET, DISCORD_ADMIN_ROLE_ID, REDIRECT, REDIRECT_URI, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_OAUTH2_URL, timezone, CLIENT_HOST, CLIENT_PORT } from './config.js';
 
 import { readFileSync } from 'fs';
 
@@ -26,8 +26,8 @@ await refreshLeaderboardData();
 cron.schedule('* * * * *', refreshLeaderboardData);
 
 const app = express();
-const VITE_PATH = path.join(path.resolve(), 'dist');
-app.use(express.static(VITE_PATH, { index: false }));
+// const VITE_PATH = path.join(path.resolve(), 'dist');
+// app.use(express.static(VITE_PATH, { index: false }));
 
 app.use(cors({
     credentials: true,
@@ -78,7 +78,7 @@ app.get(REDIRECT, errorHandlerBuilder(async ({ query: { code } }, res) => {
     const { data: { access_token } } = await axios.post(`${DISCORD_API}/oauth2/token`, params,);
     const { data: { id: user_id, username, discriminator } } = await axios.get(`${DISCORD_API}/users/@me`, { headers: { 'Authorization': `Bearer ${access_token}`, } });
     await setUser({ user_id, username, discriminator });
-    return res.cookie('token', jwt.sign(user_id, JWT_SECRET), { maxAge: 30 * 24 * 60 * 60 * 1000 }).redirect(ROUTES.HOME);
+    return res.cookie('token', jwt.sign(user_id, JWT_SECRET), { maxAge: 30 * 24 * 60 * 60 * 1000 }).redirect(new URL(ROUTES.HOME, `https://${CLIENT_HOST}:${CLIENT_PORT}`).toString());
 
 }));
 const memberToUser = (member) => {
@@ -284,8 +284,8 @@ app.post(ROUTES.SETTINGS, [authenticate, authenticateAdmin], errorHandlerBuilder
 app.get(ROUTES.SETTINGS, [authenticate, authenticateAdmin], errorHandlerBuilder(async (req, res) => res.json(settingsCache)));
 
 app.get(ROUTES.LOGIN, errorHandlerBuilder(async (req, res) => res.redirect(DISCORD_OAUTH2_URL)));
-app.get(CLIENT_ROUTES, errorHandlerBuilder(async (req, res) => res.sendFile(path.join(VITE_PATH, 'index.html'))));
-app.get('*', errorHandlerBuilder((req, res) => res.redirect(ROUTES.HOME)));
+// app.get(CLIENT_ROUTES, errorHandlerBuilder(async (req, res) => res.sendFile(path.join(VITE_PATH, 'index.html'))));
+// app.get('*', errorHandlerBuilder((req, res) => res.redirect(ROUTES.HOME)));
 
 const server = https.createServer({ key: readFileSync('./certs/key.pem'), cert: readFileSync('./certs/cert.pem') }, app)
 console.log(server.listen(PORT).address());

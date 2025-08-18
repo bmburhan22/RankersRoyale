@@ -9,7 +9,7 @@ const App = () => <Container sx={{ bgcolor: 'green', height: '100vh', width: '10
     <BrowserRouter >
         <Routes>
             <Route path={ROUTES.HOME} element={<Home />} />
-            <Route path={ROUTES.CASINOS_PAGE} element={<Casinos />} />
+            {/* <Route path={ROUTES.CASINOS_PAGE} element={<Casinos />} /> */}
             <Route path={ROUTES.ADMIN_HOME} element={<AdminHome />} />
         </Routes>
     </BrowserRouter>

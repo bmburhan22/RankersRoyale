@@ -1,8 +1,8 @@
 import {promises as fs} from 'fs';
-const sampleDataFilename = 'utils/sampledata.json';
+const demoDataFilename = 'utils/demodata.json';
 
-const saveData = async data => fs.writeFile(sampleDataFilename, JSON.stringify(data, null, 2));
-const loadData = async () => fs.readFile(sampleDataFilename, 'utf8').then(JSON.parse);
+const saveData = async data => fs.writeFile(demoDataFilename, JSON.stringify(data, null, 2));
+const loadData = async () => fs.readFile(demoDataFilename, 'utf8').then(JSON.parse);
 
 async function tippingAPI(casino_id, receiver_id, amount, currency){
     const data = await loadData();
