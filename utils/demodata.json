@@ -27,7 +27,20 @@
             "eth": 100000,
             "total_revenue": 820000,
             "total_wager": 6040000
+        },
+        "clinkbizz": {
+            "usdt": 100000,
+            "eth": 100000,
+            "total_revenue": 520000,
+            "total_wager": 620000
+        },
+        "stinky": {
+            "usdt": 100000,
+            "eth": 100000,
+            "total_revenue": 520000,
+            "total_wager": 620000
         }
+
     },
     "razed": {
         "me": {
@@ -49,6 +62,16 @@
             "total_wager": 620000
         },
         "raz3": {
+            "usd": 100000,
+            "total_revenue": 520000,
+            "total_wager": 620000
+        },
+        "raz4": {
+            "usd": 100000,
+            "total_revenue": 520000,
+            "total_wager": 620000
+        },
+        "raz5": {
             "usd": 100000,
             "total_revenue": 520000,
             "total_wager": 620000

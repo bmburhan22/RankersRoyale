@@ -50,7 +50,7 @@ class ErrorCode extends Error {
 }
 const errorHandlerBuilder = fn => async (req, res, next) => {
     try { return await fn(req, res, next) }
-    catch (err) { return res.json({ err: err.toString() }); }
+    catch (err) { return res.json({ err: err.message || err.toString() }); }
 }
 
 const authenticateAdmin = errorHandlerBuilder(async (req, res, next) => {

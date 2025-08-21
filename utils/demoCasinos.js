@@ -21,6 +21,16 @@ export const buildDemoCasinos = () => {
         '500casino': new class _500casino {
             constructor() { 
                 this.data = {
+                    name: '500 Casino',
+                    logo: `<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="100" height="100" rx="12" fill="#111827"/>
+                        <circle cx="40" cy="40" r="18" fill="#facc15"/>
+                        <line x1="40" y1="10" x2="40" y2="25" stroke="#facc15" stroke-width="3"/>
+                        <line x1="40" y1="55" x2="40" y2="70" stroke="#facc15" stroke-width="3"/>
+                        <line x1="10" y1="40" x2="25" y2="40" stroke="#facc15" stroke-width="3"/>
+                        <line x1="55" y1="40" x2="70" y2="40" stroke="#facc15" stroke-width="3"/>
+                        </svg>`,
+                    color: '#facc15',
                     allowWithdraw: true,
                     referralLink: "https://500.casino/r/ABC500",
                 }; 
@@ -62,6 +72,12 @@ export const buildDemoCasinos = () => {
         'razed': new class Razed {
             constructor() { 
                 this.data = {
+                    name: 'Razed',
+                    logo: `<svg width="80" height="80" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="80" height="80" rx="12" fill="#0a0a0a"/>
+                        <path d="M20 40 Q30 30 40 40 T60 40" fill="none" stroke="#22d3ee" stroke-width="3"/>
+                        <path d="M20 50 Q30 40 40 50 T60 50" fill="none" stroke="#38bdf8" stroke-width="3"/>`,
+                    color: '#22d3ee',
                     allowWithdraw: true,
                     referralLink: "https://www.razed.com/signup/?raf=RAZREF123",
                 }; 

@@ -37,7 +37,6 @@ const Home = () => {
             <Button variant='contained' onClick={logout}>Logout</Button>
             : <Button variant='contained' href={API_URL + ROUTES.LOGIN}>Login</Button>
         }</Toolbar></AppBar>
-      <Box sx={{ width: 1, height: 1, py: 1 }}>
 
         <Carousel
           animationConfig={config.stiff}
@@ -67,7 +66,6 @@ const Home = () => {
             };
           }}
         />
-      </Box>
     </Box>
   );
 };

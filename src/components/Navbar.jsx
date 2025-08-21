@@ -10,12 +10,12 @@ import Typography from '@mui/material/Typography';
 import { useAuth } from '../utils/auth';
 import {ROUTES}  from '../../utils/routes';
 const drawerWidth = 240;
-const appBarHeight = 64;
+import { APP_BAR_HEIGHT } from '../config/constants';
 
 const AppBar = styled(MuiAppBar)(({ theme }) => ({
   backgroundColor: '#333',
   zIndex: theme.zIndex.drawer + 1,
-  height: `${appBarHeight}px`,
+  height: `${APP_BAR_HEIGHT}px`,
   transition: theme.transitions.create(['margin', 'width'], {
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
