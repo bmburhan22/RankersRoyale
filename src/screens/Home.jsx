@@ -18,18 +18,14 @@ const Home = () => {
   const [params, setParams] = useSearchParams();
   const casinoId = params.get('casino_id');
   const [slide, setSlide] = useState();
-  const [casinoUser, setCasinoUser] = useState();
 
-  const { post, get, casinoUserIds , isAuth, logout} = useAuth();
+  const { isAuth, logout} = useAuth();
   useEffect(
     () => {
       if (!casinoIds.includes(casinoId)) setParams();
       setSlide([null, ...casinoIds].indexOf(casinoId))
     }
     , [casinoId])
-  useEffect(() => {
-    setCasinoUser(casinoUserIds?.[casinoId]);
-  }, [casinoId, casinoUserIds]);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: 1, width: 1, alignItems: 'center', overflow: 'hidden', bgcolor: 'tomato' }} >
@@ -50,24 +46,24 @@ const Home = () => {
           slides={[null, ...casinoIds].map((cid, i) => ({
             onClick: () => setParams(!cid ? {} : { casino_id: cid }),
             key: i, content:
-              <Casinos key={i} setCasinoUser={setCasinoUser} casinoUser={casinoUser} post={post} get={get} focused={casinoId == cid} casinoId={cid} />
+              <Casinos key={i} focused={casinoId == cid} casinoId={cid} />
           }))}
           offsetFn={(offset) => {
             if (offset === 0) {
               return {
                 opacity: 1,
                 transform: "translateY(-50%) translateX(-50%) scale(1)",
-                left: "50%",
+                // left: "50%",
               };
             }
 
             const isLeft = offset < 0;
 
             return {
-              opacity: 0.9,
+              opacity: 0.6,
               transform: isLeft
-                ? "translateY(-50%) translateX(30%) scale(0.9)" // For elements on the left
-                : "translateY(-50%) translateX(-130%) scale(0.9)", // For elements on the right
+                ? "translateY(-50%) translateX(50%) scale(1)" // For elements on the left
+                : "translateY(-50%) translateX(-150%) scale(1)", // For elements on the right
             };
           }}
         />

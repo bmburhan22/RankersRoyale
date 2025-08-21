@@ -18,13 +18,21 @@ const bg = {
 }
 
 const casinoIds = ['500casino', 'razed'];
-const Casinos = ({ get, post, focused, casinoUser, setCasinoUser, casinoId }) => {
+const Casinos = ({ focused, casinoId }) => {
 
+  const { post, get, casinoUserIds } = useAuth();
+  
+  const [casinoUser, setCasinoUser] = useState();
+  
   const [leaderBoard, setLeaderboard] = useState();
   const [amount, setAmount] = useState(0);
 
   const [casinoUserId, setCasinoUserId] = useState();
   const { total_reward, user_id } = casinoUser ?? {};
+
+  useEffect(() => {
+    setCasinoUser(casinoUserIds?.[casinoId]);
+  }, [casinoUserIds]);
 
   const getLeadboard = async () => setLeaderboard(
     await get(ROUTES.CASINOS + (!casinoId ? '' : `?casino_id=${casinoId}`)).then(({ data }) =>

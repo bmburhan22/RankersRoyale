@@ -10,22 +10,18 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }) => {
   const get = async (path, data) => {
     const res = await axios.get(API_URL + path, { data });
-    // console.log({ method: 'get', status: res.status, statusText: res.statusText ,res});
     if (res.status != 200) await validateAuth();
     return res;
   }
   const post = async (path, data) => {
     const res = await axios.post(API_URL + path, data);
-    // console.log({ method: 'post', status: res.status, statusText: res.statusText ,data});
 
     if (res.status != 200) await validateAuth();
     return res;
   }
   const del = async (path, data) => {
-    console.log({ delete: true, data });
 
     const res = await axios.delete(API_URL + path, { data });
-    // console.log({ method: 'post', status: res.status, statusText: res.statusText ,data});
 
     if (res.status != 200) await validateAuth();
     return res;

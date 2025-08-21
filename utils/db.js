@@ -18,7 +18,7 @@ const users_casinos = sq.define('users_casinos',
         total_reward: { type: DECIMAL(1000, 2), defaultValue: 0, allowNull: true },
     }
 );
-const usersCasinosCache = {};
+export const usersCasinosCache = {};
 const usersCasinosKey = ({ casino_id, user_id }) => `${casino_id}-${user_id}`;
 export const getByCasinoUserId = casino_user_id => Object.values(usersCasinosCache).find(uc => uc.casino_user_id == casino_user_id);
 export const setCasinoUser = async ({ curr_revenue_checkpoint, prev_revenue_checkpoint,curr_wager_checkpoint, prev_wager_checkpoint, total_reward, ...cu }) => {
@@ -34,7 +34,7 @@ export const setCasinoUser = async ({ curr_revenue_checkpoint, prev_revenue_chec
     });
     return getCasinoUser(cu);
 }
-export const casinoUsers = () => Object.values(usersCasinosCache).map(cu => ({ ...cu, ...usersCache[cu.user_id] }));
+
 export const getCasinoUser = rec => usersCasinosCache[usersCasinosKey(rec)]
 const setUsersCasinosCache = ({ dataValues: { total_reward, ...uc } }) => usersCasinosCache[usersCasinosKey(uc)] = { ...uc, total_reward: parseFloat(total_reward) || 0 };
 
@@ -42,15 +42,17 @@ const bulkSetUsersCasinosCache = records => records.forEach(setUsersCasinosCache
 export const deleteCasinoUser = async ({ user_id, casino_id }) =>  user_id===undefined||casino_id===undefined?false:(await users_casinos.destroy({ where: { user_id, casino_id }, individualHooks: true }))>0;
 users_casinos.addHook('afterUpsert', ([uc]) => setUsersCasinosCache(uc));
 users_casinos.addHook('afterDestroy', rec => delete usersCasinosCache[usersCasinosKey(rec)]);
+
 // =============USERS=================
-const users = sq.define('users',
-    { user_id: { primaryKey: true, type: STRING, unique:true, allowNull:false, }, username: { type: STRING }, discriminator: { type: STRING }, }
-);
-export const usersCache = {};
-export const setUser = async ({ user_id, username, discriminator }) => await users.upsert({ user_id, username, discriminator }, { updateOnDuplicate: ['username', 'discriminator'], returning: true });
-const setUsersCache = user => usersCache[user.user_id] = user.dataValues; 
-const bulkSetUsersCache = records => records.forEach(setUsersCache)
-users.addHook('afterUpsert', ([user]) => setUsersCache(user));
+// No use of users table for now as data is fetched from verified discord users
+// const users = sq.define('users',
+//     { user_id: { primaryKey: true, type: STRING, unique:true, allowNull:false, }, username: { type: STRING }, discriminator: { type: STRING }, }
+// );
+// export const usersCache = {};
+// export const setUser = async ({ user_id, username, discriminator }) => await users.upsert({ user_id, username, discriminator }, { updateOnDuplicate: ['username', 'discriminator'], returning: true });
+// const setUsersCache = user => usersCache[user.user_id] = user.dataValues; 
+// const bulkSetUsersCache = records => records.forEach(setUsersCache)
+// users.addHook('afterUpsert', ([user]) => setUsersCache(user));
 
 // =======SETTINGS=========
 const allowedSettings = [
@@ -81,7 +83,9 @@ const withdrawals = sq.define('withdrawals', {
 }, { timestamps: true }
 );
 export const getWithdrawals = ()=>Object.values(withdrawalsCache).map(w=>
-    ({...usersCache?.[w.user_id],...w})
+    ({
+        //...usersCache?.[w.user_id],
+        ...w})
 )
 export const withdrawalsCache = {};
 const setWithdrawalsCache = ({ dataValues: { createdAt, updatedAt, ...w } }) => withdrawalsCache[w.wid] = { ...w, createdAt: createdAt.getTime(), updatedAt: updatedAt.getTime() };
@@ -95,6 +99,6 @@ withdrawals.addHook('afterUpdate', setWithdrawalsCache);
 sq.sync({ alter: true }).then(async () => {
     settings.findAll().then(bulkSetSettingsCache);
     users_casinos.findAll().then(bulkSetUsersCasinosCache)
-    users.findAll().then(bulkSetUsersCache)
+    // users.findAll().then(bulkSetUsersCache)
     withdrawals.findAll().then(bulkSetWithdrawalsCache)
 }).catch((err) => { console.error(err); });

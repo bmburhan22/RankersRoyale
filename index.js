@@ -9,11 +9,15 @@ import { ROUTES, CLIENT_ROUTES, DISCORD_API } from './utils/routes.js';
 import bot from './utils/discordBot.js';
 import https from 'https';
 import {
-    casinoUsers, createWithdrawal, deleteCasinoUser,
+    createWithdrawal, deleteCasinoUser,
     getByCasinoUserId, getCasinoUser,
     getWithdrawals,
-    setCasinoUser, setSettings,
-    settingsCache, setUser, updateWithdrawal, usersCache, withdrawalsCache
+    setCasinoUser, 
+    setSettings, settingsCache,
+    // setUser, usersCache,
+    updateWithdrawal, 
+    usersCasinosCache, 
+    withdrawalsCache,
 } from './utils/db.js';
 import cron from 'node-cron';
 import { getWithdrawableBalances, casinos, refreshLeaderboardData, initCasinos, validCasinoIds } from './utils/casinos.js';
@@ -65,10 +69,13 @@ const authenticate = errorHandlerBuilder(async (req, res, next) => {
 
     const member = bot.verifiedMembers[user_id]
     if (!member) throw new ErrorCode(403, 'Not a verified server member');
-    member.isAdmin = member.roles.cache.has(DISCORD_ADMIN_ROLE_ID)
     res.locals.member = member;
     await next();
 });
+
+const casinoUsers = () => Object.values(usersCasinosCache)
+    .map(cu => ({ ...cu, ...bot.verifiedMembers[cu.user_id] })
+);
 
 app.get(REDIRECT, errorHandlerBuilder(async ({ query: { code } }, res) => {
 
@@ -82,16 +89,17 @@ app.get(REDIRECT, errorHandlerBuilder(async ({ query: { code } }, res) => {
     return res.cookie('token', jwt.sign(user_id, JWT_SECRET), { maxAge: 30 * 24 * 60 * 60 * 1000 }).redirect(ROUTES.HOME);
 
 }));
-const memberToUser = (member) => {
-    const { username, discriminator, globalName, id: userId } = member.user;
-    const { displayAvatarURL, nickname, isAdmin } = member.toJSON();
 
-    return {
-        isAdmin, username, discriminator, globalName, nickname, displayAvatarURL, userId, casinoUserIds:
-            validCasinoIds.reduce((obj, casino_id) => { obj[casino_id] = getCasinoUser({ user_id: userId, casino_id }); return obj; }, {})
-    };
-}
-app.get(ROUTES.ME, authenticate, errorHandlerBuilder(async (req, res) => res.json(memberToUser(res.locals.member))));
+app.get(ROUTES.ME, authenticate, errorHandlerBuilder(async (req, res) => res.json(
+    {
+        ...res.locals.member,
+        casinoUserIds:
+            validCasinoIds.reduce((obj, casino_id) => { 
+                obj[casino_id] = getCasinoUser({ user_id: res.locals.member.userId, casino_id }); 
+            return obj; 
+        }, {})
+    }
+)));
 
 const calcRevenue = (total, checkpoint) => Math.max(0, total - (checkpoint ?? total))
 const getCasinoLeaderboards = (casinoIds = validCasinoIds) => {
@@ -104,11 +112,9 @@ const getCasinoLeaderboards = (casinoIds = validCasinoIds) => {
         for (let c = 0; c < casinoMembers.length; c++) {
             casinoMembers[c] = { ...casinoMembers[c], ...getByCasinoUserId(casinoMembers[c].casino_user_id) };
 
-            if (userIds.includes(casinoMembers[c].user_id)) casinoMembers[c] = {
-                ...casinoMembers[c], ...usersCache[casinoMembers[c].user_id],
+            if (userIds.includes(casinoMembers[c].user_id)) 
+                casinoMembers[c] = {...casinoMembers[c], ...bot.verifiedMembers[casinoMembers[c].user_id]};
 
-                displayAvatarURL: bot.verifiedMembers[casinoMembers[c]?.user_id]?.displayAvatarURL()
-            };
             let cu = casinoMembers[c];
             cu.revenue = calcRevenue(cu.total_revenue, cu?.curr_revenue_checkpoint)
             cu.wager = calcRevenue(cu.total_wager, cu?.curr_wager_checkpoint)
@@ -129,9 +135,8 @@ const getCasinoLeaderboards = (casinoIds = validCasinoIds) => {
                 }
             }
         }
-        console.log({casinoMembers});
-        leaderboards.casinos[casino_id].leaderboard = casinoMembers.filter(cu => cu.user_id != null).toSorted((a, b) => b.wager - a.wager)
-        console.log({leaderboards:leaderboards.casinos[casino_id].leaderboard});
+        leaderboards.casinos[casino_id].leaderboard = casinoMembers.filter(cu => cu.user_id != null).toSorted((a, b) => b.wager - a.wager) 
+        // why filter? because casino referred users are not in bot.verifiedMembers
         leaderboards.casinos[casino_id].leaderboard.forEach((cu, i) => cu.rank = i + 1);
     }
     leaderboards.total = {leaderboard:Object.values(leaderboards.total).toSorted((a, b) => b.wager - a.wager)}
@@ -148,7 +153,7 @@ app.get(ROUTES.CASINOS, errorHandlerBuilder(async ({ query: { casino_id } }, res
 app.post(ROUTES.CASINOS, authenticate, errorHandlerBuilder(async ({ body: { casino_id, casino_user_id } }, res) => {
     if (!casinos[casino_id]) throw new ErrorCode(403, `Invalid casino ${casino_id}`);
     if (getByCasinoUserId(casino_user_id)) throw new ErrorCode(403, 'Casino ID already linked');
-    const user_casino = await setCasinoUser({ user_id: res.locals.member.id, casino_id, casino_user_id });
+    const user_casino = await setCasinoUser({ user_id: res.locals.member.userId, casino_id, casino_user_id });
 
     return res.json({
         user_casino,
@@ -255,11 +260,10 @@ const refreshRevenue = async () => {
     }
     const cronTimeStamp = Date.now();
     setSettings({ cronTimeStamp });
-    return casinoUsers();
 }
 
 
-app.post(ROUTES.REFRESH_REVENUE, [authenticate, authenticateAdmin], errorHandlerBuilder(async (req, res) => res.json(await refreshRevenue().then(() => casinoUsers()))));
+app.post(ROUTES.REFRESH_REVENUE, [authenticate, authenticateAdmin], errorHandlerBuilder(async (req, res) => res.json(await refreshRevenue().then(casinoUsers)))); 
 
 let task;
 const scheduleTask = async () => {
