@@ -23,7 +23,6 @@ import {
   TrendingUp as TrendingUpIcon,
   AccountBalance as BalanceIcon
 } from '@mui/icons-material';
-import { CASINO_SIDE_MARGIN } from '../config/constants.js';
 
 const casinoIds = [
   { id: '500casino', name: '500 Casino' },
@@ -33,21 +32,22 @@ const casinoIds = [
 // Reusable styles function
 const getStyles = (color) => ({
   mainBox: {
-    py: 0, px: 0,
+    py: 0, 
+    px: 0,
     background: "linear-gradient(135deg, #0f1419 0%, #1a2332 50%, #0f1419 100%)",
     display: "block", // Changed from "flex" to "block" for vertical stacking
-    position: "relative", overflow: "hidden", height: 1,
-    width: "calc(100vw - ${CASINO_SIDE_MARGIN}px)",
-    minWidth: "800px", // Fixed minimum width to prevent excessive shrinking
-    background: "rgba(15, 20, 25, 0.85)",
+    position: "relative", 
+    overflow: "auto", 
+    height: 1,
+    width: { xs: '85vw', md: '800px' }, // Mobile: 85vw (leaves space to peek), Desktop: 1200px
     borderRadius: 0,
     boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(0, 123, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
     backdropFilter: "blur(20px)",
-    p: 4, color: "white", position: "relative", overflow: "auto", mx: "auto",
-
-    scrollbarWidth: 'none',
-    width: `calc(100vw - ${CASINO_SIDE_MARGIN * 2}px)`,
-    height: 1, overflow: 'auto',
+    background: "rgba(15, 20, 25, 0.85)", // Restored transparency glass effect
+    p: 4, 
+    color: "white", 
+    mx: "auto",
+    scrollbarWidth: 'none'
   },
   headerBox: {
     background: `linear-gradient(135deg, ${color} 0%, ${color}80 100%)`,
@@ -84,8 +84,12 @@ const getStyles = (color) => ({
   },
   leaderboardBox: {
     background: "rgba(0, 123, 255, 0.03)",
-    borderRadius: "16px", border: "1px solid rgba(0, 123, 255, 0.1)",
-    overflow: "hidden", boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+    borderRadius: "16px", 
+    border: "1px solid rgba(0, 123, 255, 0.1)",
+    overflow: "hidden", 
+    boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+    maxWidth: "1000px",
+    mx: "auto"
   },
   leaderboardHeader: {
     p: 3, background: "rgba(0, 123, 255, 0.08)"
@@ -143,6 +147,10 @@ const Casinos = ({ focused, casinoId }) => {
     .then(r => { if (r.data.err) { alert(r.data.err); return; } setCasinoUser(cu => ({ ...cu, total_reward: r?.data?.balance })); });
 
   useEffect(() => {
+    getLeadboard();
+  }, []);
+
+  useEffect(() => {
     if (focused) getLeadboard();
   }, [focused]);
 
@@ -153,12 +161,11 @@ const Casinos = ({ focused, casinoId }) => {
   const isValidUser = casinoUser && casinoUser.casino_user_id;
 
   // Check if casino is focused
-  const isCasinoFocused = focused;
 
   return (
     <Container maxWidth={false} disableGutters sx={currentStyles.mainBox}>
       {/* Focus Indicator */}
-      {!isCasinoFocused && (
+      {!focused && (
         <>
           {/* Blur effect behind the text */}
           <Box sx={{
@@ -171,130 +178,36 @@ const Casinos = ({ focused, casinoId }) => {
             pointerEvents: 'none',
             zIndex: 1,
           }} />
-          
-          {/* Left side repeating vertical text tape */}
-          <Box sx={{
-            position: 'absolute',
-            left: { xs: 10, sm: 20, md: 30 },
-            top: 0,
-            bottom: 0,
-            zIndex: 2,
-            pointerEvents: 'none',
-            overflow: 'hidden',
-          }}>
-            <Box sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              animation: 'scrollUp 20s linear infinite',
-              '@keyframes scrollUp': {
-                '0%': { transform: 'translateY(0)' },
-                '100%': { transform: 'translateY(-50%)' },
-              },
-            }}>
-              {Array.from({ length: 20 }, (_, i) => (
-                <Typography 
-                  key={i}
-                  variant="body2" 
-                  sx={{
-                    writingMode: 'vertical-rl',
-                    textOrientation: 'mixed',
-                    color: 'rgba(255, 255, 255, 0.4)',
-                    fontSize: { xs: '0.8rem', sm: '1rem' },
-                    fontWeight: '500',
-                    letterSpacing: '0.1em',
-                    textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
-                    transform: 'rotate(180deg)',
-                    userSelect: 'none',
-                    mb: 2,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {displayName}
-                </Typography>
-              ))}
-            </Box>
-          </Box>
-          
-          {/* Right side repeating vertical text tape */}
-          <Box sx={{
-            position: 'absolute',
-            right: { xs: 10, sm: 20, md: 30 },
-            top: 0,
-            bottom: 0,
-            zIndex: 2,
-            pointerEvents: 'none',
-            overflow: 'hidden',
-          }}>
-            <Box sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              animation: 'scrollDown 20s linear infinite',
-              '@keyframes scrollDown': {
-                '0%': { transform: 'translateY(-50%)' },
-                '100%': { transform: 'translateY(0)' },
-              },
-            }}>
-              {Array.from({ length: 20 }, (_, i) => (
-                <Typography 
-                  key={i}
-                  variant="body2" 
-                  sx={{
-                    writingMode: 'vertical-rl',
-                    textOrientation: 'mixed',
-                    color: 'rgba(255, 255, 255, 0.4)',
-                    fontSize: { xs: '0.8rem', sm: '1rem' },
-                    fontWeight: '500',
-                    letterSpacing: '0.1em',
-                    textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
-                    userSelect: 'none',
-                    mb: 2,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {displayName}
-                </Typography>
-              ))}
-            </Box>
-          </Box>
         </>
       )}
 
       {/* Header */}
       <Box sx={{ mb: 4 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
-            <Stack direction="row" alignItems="center" spacing={2}>
-              <Box sx={currentStyles.headerBox}>
-                {casinoLogo?.trim()?.startsWith('<svg') ? (
-                  <Box dangerouslySetInnerHTML={{ __html: casinoLogo }} className="casino-svg-logo" sx={{display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', '& svg': {width: '100%', height: '100%', maxWidth: '32px', maxHeight: '32px', fill: 'currentColor', color: 'white'}}} />
-                ) : casinoLogo?.startsWith('http') ? (
-                  <img src={casinoLogo} alt={`${casinoName} logo`} style={{width: 32, height: 32, objectFit: 'contain', filter: 'brightness(0) invert(1)'}} />
-                ) : casinoLogo ? (
-                  React.createElement(casinoLogo, { sx: { fontSize: 32, color: "white" } })
-                ) : (
-                  <CasinoIcon sx={{ fontSize: 32, color: "white" }} />
-                )}
-              </Box>
-              <Typography variant="h4" fontWeight="700" sx={currentStyles.title}>
-                {displayName} Leaderboard
-              </Typography>
-            </Stack>
+            {/* Name on the left */}
+            <Typography variant="h4" fontWeight="700" sx={currentStyles.title}>
+              {displayName} Leaderboard
+            </Typography>
             
-            {/* Only show balance for valid users */}
-            {isValidUser && (
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <BalanceIcon sx={{ color }} />
-                <Typography variant="h6" color="rgba(255, 255, 255, 0.9)" fontWeight="600">
-                  ${total_reward?.toLocaleString() || '0'}
-                </Typography>
-              </Stack>
-            )}
+            {/* Logo on the right */}
+            <Box sx={currentStyles.headerBox}>
+              {casinoLogo?.trim()?.startsWith('<svg') ? (
+                <Box dangerouslySetInnerHTML={{ __html: casinoLogo }} className="casino-svg-logo" sx={{display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', '& svg': {width: '100%', height: '100%', maxWidth: '100px', maxHeight: '100px', fill: 'currentColor', color: 'white'}}} />
+              ) : casinoLogo?.startsWith('http') ? (
+                <img src={casinoLogo} alt={`${displayName} logo`} style={{width: 32, height: 32, objectFit: 'contain', filter: 'brightness(0) invert(1)'}} />
+              ) : casinoLogo ? (
+                React.createElement(casinoLogo, { sx: { fontSize: 32, color: "white" } })
+              ) : (
+                <CasinoIcon sx={{ fontSize: 32, color: "white" }} />
+              )}
+            </Box>
           </Stack>
           
           <Divider sx={{ borderColor: `${color}30`, opacity: 0.5 }} />
         </Box>
 
         {/* Casino User ID Input and Withdraw Balance - Only show for valid users and when focused */}
-        {isValidUser && isCasinoFocused && (
+        {isValidUser && focused && (
           <Box sx={{ 
             display: 'flex', 
             flexDirection: { xs: 'column', lg: 'row' }, 
@@ -312,8 +225,8 @@ const Casinos = ({ focused, casinoId }) => {
                     <Typography variant="h6" color="white" fontWeight="600">
                       {casinoUser?.casino_user_id || 'Not Set'}
                     </Typography>
-                  </Box>
-                  
+      </Box>
+
                   <Stack direction="row" spacing={2} alignItems="center">
                     <TextField
                       placeholder="Enter Casino User ID"
@@ -335,9 +248,12 @@ const Casinos = ({ focused, casinoId }) => {
               <Card sx={{...currentStyles.card, background: "rgba(76, 175, 80, 0.05)", border: "1px solid rgba(76, 175, 80, 0.3)", flex: { lg: 1 }, minWidth: { lg: 0 }}}>
                 <Stack direction="column" spacing={2}>
                   <Box>
-                    <Typography variant="body2" color="rgba(255, 255, 255, 0.7)" mb={1}>
-                      Available Balance
-                    </Typography>
+                    <Stack direction="row" alignItems="center" spacing={1} mb={1}>
+                      <BalanceIcon sx={{ color: "#4caf50" }} />
+                      <Typography variant="body2" color="rgba(255, 255, 255, 0.7)">
+                        Available Balance
+                      </Typography>
+                    </Stack>
                     <Typography variant="h5" color="#4caf50" fontWeight="700">
                       ${total_reward?.toLocaleString() || '0'}
                     </Typography>
@@ -355,7 +271,7 @@ const Casinos = ({ focused, casinoId }) => {
                       sx={{...currentStyles.input, flex: 1, minWidth: 0, "& .MuiOutlinedInput-root fieldset": {borderColor: "rgba(76, 175, 80, 0.5)"}, "& .MuiOutlinedInput-root:hover fieldset": {borderColor: "rgba(76, 175, 80, 0.7)"}, "& .MuiOutlinedInput-root.Mui-focused fieldset": {borderColor: "#4caf50"}}}
                     />
                      
-                    <Button variant="contained" onClick={sendBalance} disabled={!amount || amount > total_reward} sx={{...currentStyles.button, background: "linear-gradient(135deg, #4caf50 0%, #45a049 100%)", "&:hover": {background: "linear-gradient(135deg, #45a049 0%, #4caf50 100%)", transform: "translateY(-1px)", boxShadow: "0 8px 16px rgba(76, 175, 80, 0.4)"}}}>
+                    <Button variant="contained" onClick={sendBalance} disabled={!amount || amount <= 0 || amount > total_reward} sx={{...currentStyles.button, background: "linear-gradient(135deg, #4caf50 0%, #45a049 100%)", "&:hover": {background: "linear-gradient(135deg, #45a049 0%, #4caf50 100%)", transform: "translateY(-1px)", boxShadow: "0 8px 16px rgba(76, 175, 80, 0.4)"}}}>
                       Withdraw
                     </Button>
                   </Stack>
@@ -385,7 +301,7 @@ const Casinos = ({ focused, casinoId }) => {
                   <Box sx={{position: "relative", mb: 2}}>
                     <Avatar src={user.displayAvatarURL} sx={{width: 80, height: 80, border: isMe ? `4px solid ${color}` : `4px solid ${colors[actualRank - 1]}`, boxShadow: isMe ? `0 0 30px ${color}60` : `0 0 25px ${colors[actualRank - 1]}80`, filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.3))"}} />
                     {isMe && <StarIcon sx={{position: "absolute", top: -8, right: -8, color, fontSize: 24, filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))"}} />}
-                  </Box>
+      </Box>
 
                   <Typography variant="h6" color="white" fontWeight="600" textAlign="center" sx={{ mb: 1, maxWidth: 120 }}>
                     {user.discriminator && user.discriminator !== '0' ? `${user.username}#${user.discriminator}` : user.username}
@@ -428,7 +344,7 @@ const Casinos = ({ focused, casinoId }) => {
               bottom: 0,
               width: '40px',
               background: 'linear-gradient(90deg, rgba(0, 123, 255, 0.03) 0%, transparent 100%)',
-              pointerEvents: 'none',
+          pointerEvents: 'none',
               zIndex: 1,
             }} />
             
@@ -492,7 +408,7 @@ const Casinos = ({ focused, casinoId }) => {
             </Box>
           </Box>
         </Box>
-    </Container>
+      </Container>
   );
 };
 

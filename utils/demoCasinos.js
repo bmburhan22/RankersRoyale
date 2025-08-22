@@ -22,13 +22,13 @@ export const buildDemoCasinos = () => {
             constructor() { 
                 this.data = {
                     name: '500 Casino',
-                    logo: `<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="100" height="100" rx="12" fill="#111827"/>
-                        <circle cx="40" cy="40" r="18" fill="#facc15"/>
-                        <line x1="40" y1="10" x2="40" y2="25" stroke="#facc15" stroke-width="3"/>
-                        <line x1="40" y1="55" x2="40" y2="70" stroke="#facc15" stroke-width="3"/>
-                        <line x1="10" y1="40" x2="25" y2="40" stroke="#facc15" stroke-width="3"/>
-                        <line x1="55" y1="40" x2="70" y2="40" stroke="#facc15" stroke-width="3"/>
+                    logo: `<svg width="80" height="80" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="80" height="80" rx="10" fill="#111827"/>
+                        <circle cx="40" cy="40" r="14" fill="#facc15"/>
+                        <line x1="40" y1="16" x2="40" y2="28" stroke="#facc15" stroke-width="2"/>
+                        <line x1="40" y1="52" x2="40" y2="64" stroke="#facc15" stroke-width="2"/>
+                        <line x1="16" y1="40" x2="28" y2="40" stroke="#facc15" stroke-width="2"/>
+                        <line x1="52" y1="40" x2="64" y2="40" stroke="#facc15" stroke-width="2"/>
                         </svg>`,
                     color: '#facc15',
                     allowWithdraw: true,
@@ -74,9 +74,9 @@ export const buildDemoCasinos = () => {
                 this.data = {
                     name: 'Razed',
                     logo: `<svg width="80" height="80" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="80" height="80" rx="12" fill="#0a0a0a"/>
-                        <path d="M20 40 Q30 30 40 40 T60 40" fill="none" stroke="#22d3ee" stroke-width="3"/>
-                        <path d="M20 50 Q30 40 40 50 T60 50" fill="none" stroke="#38bdf8" stroke-width="3"/>`,
+                        <rect width="80" height="80" rx="10" fill="#0a0a0a"/>
+                        <path d="M20 32 Q32 24 40 32 T60 32" fill="none" stroke="#22d3ee" stroke-width="2"/>
+                        <path d="M20 40 Q32 32 40 40 T60 40" fill="none" stroke="#38bdf8" stroke-width="2"/>`,
                     color: '#22d3ee',
                     allowWithdraw: true,
                     referralLink: "https://www.razed.com/signup/?raf=RAZREF123",
