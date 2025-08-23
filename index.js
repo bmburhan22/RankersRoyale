@@ -21,7 +21,7 @@ import {
 } from './utils/db.js';
 import cron from 'node-cron';
 import { getWithdrawableBalances, casinos, refreshLeaderboardData, initCasinos, validCasinoIds } from './utils/casinos.js';
-import { PORT, JWT_SECRET, DISCORD_ADMIN_ROLE_ID, REDIRECT, REDIRECT_URI, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_OAUTH2_URL, timezone } from './config.js';
+import { PORT, JWT_SECRET, REDIRECT, REDIRECT_URI, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_OAUTH2_URL, timezone } from './config.js';
 
 import { readFileSync } from 'fs';
 
@@ -216,7 +216,7 @@ app.post(ROUTES.WITHDRAWALS, [authenticate, authenticateAdmin], errorHandlerBuil
         { transactions: getWithdrawals(), balances: getWithdrawableBalances() });
 }));
 
-app.post(ROUTES.CLAIM_REWARD, authenticate, errorHandlerBuilder(async (req, res) => res.json(await transaction({ ...req.body, user_id: res.locals.member.id, }))));
+app.post(ROUTES.CLAIM_REWARD, authenticate, errorHandlerBuilder(async (req, res) => res.json(await transaction({ ...req.body, user_id: res.locals.member.userId, }))));
 
 let withdrawTask;
 const scheduleWithdrawTask = async () => {

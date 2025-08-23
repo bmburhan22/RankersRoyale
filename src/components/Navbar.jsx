@@ -58,7 +58,6 @@ const DrawerHeader = styled('div')(({ theme }) => ({
 
 const Navbar = () => {
   const { isAuth, isAdmin, username, logout, nickname, globalName, discriminator, displayAvatarURL } = useAuth();
-  console.log({isAuth, isAdmin});
   
   const [open, setOpen] = useState(false);
   const drawerRef = useRef(null);
