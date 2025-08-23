@@ -34,7 +34,7 @@ const AdminHome = () => {
 
   const refreshRevenue = async () => await post(ROUTES.REFRESH_REVENUE).then(r => setMembers(r.data));
 
-  const getSettings = async () => await get(ROUTES.SETTINGS).then(r => setSettingsObj(r?.data));
+  const getSettings = async () => await get(ROUTES.SETTINGS).then(r => setSettingsObj(r?.data || {}));
   const setSettings = async () => await post(ROUTES.SETTINGS, settingsObj).then(r => setSettingsObj(r?.data));
 
   useEffect(
@@ -108,18 +108,18 @@ const AdminHome = () => {
               
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} sx={{ mb: 3 }}>
                 <TextField 
-                  value={settingsObj.revenueSharePercent ?? ''} 
+                  value={settingsObj.revenueSharePercent || ''} 
                   type='number' 
                   variant='outlined' 
-                  slotProps={{ htmlInput: { max: 1, min: 0 } }} 
-                  onChange={({ target: { value: revenueSharePercent } }) => setSettingsObj((obj) => ({ ...obj, revenueSharePercent }))} 
+                  slotProps={{ htmlInput: { max: 1, min: 0, step: 0.01 } }} 
+                  onChange={({ target: { value: revenueSharePercent } }) => setSettingsObj((obj) => ({ ...obj, revenueSharePercent: parseFloat(revenueSharePercent) || 0 }))} 
                   label='Reward Per Revenue Factor 0-1'
                   sx={sharedStyles.input}
                   fullWidth
                 />
 
                 <TextField 
-                  value={settingsObj.withdrawCronExpression ?? ''} 
+                  value={settingsObj.withdrawCronExpression || ''} 
                   onChange={({ target: { value: withdrawCronExpression } }) => setSettingsObj((obj) => ({ ...obj, withdrawCronExpression }))} 
                   label='Withdrawal Auto Approve Cron Expression'
                   sx={sharedStyles.input}
@@ -141,7 +141,7 @@ const AdminHome = () => {
 
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} sx={{ mb: 3 }}>
                 <TextField 
-                  value={settingsObj.cronExpression ?? ''} 
+                  value={settingsObj.cronExpression || ''} 
                   onChange={({ target: { value: cronExpression } }) => setSettingsObj((obj) => ({ ...obj, cronExpression }))} 
                   label='Revenue Refresh Cron Expression'
                   sx={sharedStyles.input}

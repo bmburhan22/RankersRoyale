@@ -23,7 +23,7 @@ const {
 
 const REDIRECT_URI = new URL(REDIRECT, `https://${HOST}:${PORT}`).toString();
 const DISCORD_OAUTH2_URL = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=identify+guilds`;
-const timezone = 'kwt';
+const timezone = 'Asia/Kuwait';
 
 export {
     MODE,
