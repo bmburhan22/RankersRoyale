@@ -1,0 +1,51 @@
+import 'dotenv/config';
+const {
+    MODE,
+    HOST,
+    PORT,
+    REDIRECT,
+    JWT_SECRET,
+    DISCORD_ADMIN_ROLE_ID,
+    DISCORD_CLIENT_ID,
+    DISCORD_CLIENT_SECRET,
+    API_KEY_500,
+    API_KEY_RAZED,
+    API_KEY_RAZED_REF,
+    TOKEN,
+    DISCORD_GUILD_ID,
+    DISCORD_ROLE_ID,
+    POSTGRES_HOST,
+    POSTGRES_PORT,
+    POSTGRES_USER,
+    POSTGRES_PASSWORD,
+    POSTGRES_DB,
+} = process.env;
+
+const REDIRECT_URI = new URL(REDIRECT, `https://${HOST}:${PORT}`).toString();
+const DISCORD_OAUTH2_URL = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=identify+guilds`;
+const timezone = 'Asia/Kuwait';
+
+export {
+    MODE,
+    HOST,
+    PORT,
+    POSTGRES_HOST,
+    POSTGRES_PORT,
+    POSTGRES_USER,
+    POSTGRES_PASSWORD,
+    POSTGRES_DB,
+    REDIRECT,
+    REDIRECT_URI,
+    JWT_SECRET,
+    DISCORD_ADMIN_ROLE_ID,
+    DISCORD_CLIENT_ID,
+    DISCORD_CLIENT_SECRET,
+    API_KEY_500,
+    API_KEY_RAZED,
+    API_KEY_RAZED_REF,
+    TOKEN,
+    DISCORD_GUILD_ID,
+    DISCORD_ROLE_ID,
+    DISCORD_OAUTH2_URL,
+    timezone,
+};

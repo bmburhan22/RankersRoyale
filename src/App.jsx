@@ -1,34 +1,15 @@
-import { useState } from 'react'
-import {Navigate, Routes, Route} from 'react-router-dom'
-import './App.css'
-import {get, endPoints } from './utilities/api';
-import { routes } from './utilities/routes';
-import axios from 'axios';
-import TopNavbar  from './components/navbar';
-import Topbar from './components/navbar';
-import { AuthProvider, AuthContext } from './utilities/auth';
+import { Container } from "@mui/material";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { ROUTES } from "../utils/routes";
+import Home from "./screens/Home";
+import AdminHome from "./screens/AdminHome";
 
-
-function App() {
-    // get(endPoints['REDIRECT'], {})
-    // axios.get('http://localhost:2000/redirect').then((res)=>console.log(res.data ));
-    
-  return (
-    <>
-    <AuthProvider>
-      <Routes>
-        <Route path={routes.LOGIN} element={<Topbar />} />
-
-        {/* {auth.isAuthenticated ? (
-          <Route path="/dashboard" element={<Dashboard />} />
-        ) : (
-          <Route path={routes.LOGIN} element={<Navigate to="/login" />} />
-        )}
-         */}
-      </Routes>
-    </AuthProvider>
-    </>
-  )
-}
-
-export default App
+const App = () => <Container disableGutters maxWidth={false}>
+    <BrowserRouter >
+        <Routes>
+            <Route path={ROUTES.HOME} element={<Home />} />
+            <Route path={ROUTES.ADMIN_HOME} element={<AdminHome />} />
+        </Routes>
+    </BrowserRouter>
+</Container>
+export default App;

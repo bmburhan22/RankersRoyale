@@ -1,0 +1,31 @@
+name: rr
+services:
+  db:
+    container_name: pg-container
+    image: postgres:alpine
+    env_file:
+      - .env
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  app:
+    container_name: rr-container
+    build: .
+    image: bmburhan/rankers-royale
+    env_file:
+      - .env
+    ports:
+      - "${PORT:-8443}:${PORT:-8443}"
+    depends_on:
+      db:
+        condition: service_healthy
+    working_dir: /app
+    volumes:
+      - ./certs:/app/certs:ro
+
+volumes:
+  pg-data:
