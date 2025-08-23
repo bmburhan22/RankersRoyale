@@ -22,13 +22,13 @@ export const buildDemoCasinos = () => {
             constructor() { 
                 this.data = {
                     name: '500 Casino',
-                    logo: `<svg width="80" height="80" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="80" height="80" rx="10" fill="#111827"/>
-                        <circle cx="40" cy="40" r="14" fill="#facc15"/>
-                        <line x1="40" y1="16" x2="40" y2="28" stroke="#facc15" stroke-width="2"/>
-                        <line x1="40" y1="52" x2="40" y2="64" stroke="#facc15" stroke-width="2"/>
-                        <line x1="16" y1="40" x2="28" y2="40" stroke="#facc15" stroke-width="2"/>
-                        <line x1="52" y1="40" x2="64" y2="40" stroke="#facc15" stroke-width="2"/>
+                    logo: `<svg width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="40" height="40" rx="5" fill="#111827"/>
+                        <circle cx="20" cy="20" r="7" fill="#facc15"/>
+                        <line x1="20" y1="8" x2="20" y2="14" stroke="#facc15" stroke-width="1"/>
+                        <line x1="20" y1="26" x2="20" y2="32" stroke="#facc15" stroke-width="1"/>
+                        <line x1="8" y1="20" x2="14" y2="20" stroke="#facc15" stroke-width="1"/>
+                        <line x1="26" y1="20" x2="32" y2="20" stroke="#facc15" stroke-width="1"/>
                         </svg>`,
                     color: '#facc15',
                     allowWithdraw: true,
@@ -73,10 +73,10 @@ export const buildDemoCasinos = () => {
             constructor() { 
                 this.data = {
                     name: 'Razed',
-                    logo: `<svg width="80" height="80" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="80" height="80" rx="10" fill="#0a0a0a"/>
-                        <path d="M20 32 Q32 24 40 32 T60 32" fill="none" stroke="#22d3ee" stroke-width="2"/>
-                        <path d="M20 40 Q32 32 40 40 T60 40" fill="none" stroke="#38bdf8" stroke-width="2"/>`,
+                    logo: `<svg width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="40" height="40" rx="5" fill="#0a0a0a"/>
+                        <path d="M10 16 Q16 12 20 16 T30 16" fill="none" stroke="#22d3ee" stroke-width="1"/>
+                        <path d="M10 20 Q16 16 20 20 T30 20" fill="none" stroke="#38bdf8" stroke-width="1"/>`,
                     color: '#22d3ee',
                     allowWithdraw: true,
                     referralLink: "https://www.razed.com/signup/?raf=RAZREF123",

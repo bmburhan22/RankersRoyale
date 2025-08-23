@@ -58,7 +58,7 @@ const Extension = () => {
 
   if (!isAuth) {
     return (
-      <Container sx={{ bgcolor: '#0f1419', height: '100vh', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} disableGutters maxWidth={false}>
+      <Container sx={{ bgcolor: '#0f1419', height: 600, width: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }} disableGutters maxWidth={false}>
         <Box sx={{ textAlign: 'center' }}>
           <Typography variant="h4" sx={{ color: 'white', mb: 3, fontWeight: 600 }}>
             Rankers Royale Extension
@@ -94,7 +94,7 @@ const Extension = () => {
 
 
   return (
-    <Container maxWidth={false} disableGutters sx={{ bgcolor: '#0f1419', height: '100vh', width: '100%' }}>
+    <Container maxWidth={false} disableGutters sx={{ bgcolor: '#0f1419', height: 600, width: 800 }}>
       <Box sx={{ 
         py: 2, 
         px: 2, 

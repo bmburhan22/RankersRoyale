@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../utils/auth.jsx';
 import { ROUTES } from '../../utils/routes.js';
 
@@ -47,12 +47,18 @@ const getStyles = (color) => ({
   },
   headerBox: {
     background: `linear-gradient(135deg, ${color} 0%, ${color}80 100%)`,
-    borderRadius: "16px", p: 2,
+    borderRadius: "8px", p: 0.5,
     boxShadow: `0 8px 16px ${color}40`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
   title: {
     background: `linear-gradient(135deg, #ffffff 0%, ${color} 100%)`, 
-    WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent"
+    WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
+    lineHeight: { xs: 1.2, sm: 1.3, md: 1.4 }
   },
   card: {
     background: "rgba(0, 123, 255, 0.05)",
@@ -109,51 +115,86 @@ const CasinoBase = ({
   showTop3 = true, 
   showLeaderboard = true, 
   showUserInput = true,
-  showWithdraw = true,
-  customHeader = null,
-  customFooter = null
+  showWithdraw = true
 }) => {
-  const { post, get, casinoUserIds, userId } = useAuth();
+  const { post, get, casinoUserIds={}, userId } = useAuth();
   
   const [casinoUser, setCasinoUser] = useState();
   const [casinoData, setCasinoData] = useState();
   const [amount, setAmount] = useState(0);
-  const [casinoUserId, setCasinoUserId] = useState();
+  const [casinoUserIdInputValue, setCasinoUserIdInputValue] = useState();
   
-  const { total_reward } = casinoUser ?? {};
+  // Get total_reward from casinoUser (user input state) and other data from leaderboard
   const { leaderboard, allowWithdraw, logo:casinoLogo, color:casinoColor, referralLink } = casinoData ?? {};
   const isTotal = !casinoId || casinoId === 'total' || !casinoIds.some(casino => casino.id === casinoId);
   
   // Fallback casinoName to "Total" if not available, or use name from casinoIds list
-  const displayName = (casinoId ? casinoIds.find(casino => casino.id === casinoId)?.name : null) || 'Total';
+  const casinoName = isTotal ? 'Total' : (casinoIds.find(casino => casino.id === casinoId)?.name || 'Total');
   
   // Default color to white if casinoColor is null/undefined
   const color = casinoColor || '#ffffff';
   
   useEffect(() => {
-    // Find the current user in the leaderboard data
-    if (casinoData?.leaderboard && userId) {
-      const currentUser = casinoData.leaderboard.find(user => user.user_id === userId);
-      setCasinoUser(currentUser);
-    }
-  }, [casinoData, userId]);
+    setCasinoUser(casinoUserIds?.[casinoId]);
+  }, [casinoUserIds]);
+
+  // Find current user in leaderboard data for display purposes (rank, wager, revenue)
+  const currentUserInLeaderboard = useMemo(() => {
+    if (!userId || !casinoData?.leaderboard) return null;
+    return casinoData.leaderboard.find(user => user.user_id === userId);
+  }, [userId, casinoData?.leaderboard]);
+
 
   const getLeadboard = async () => setCasinoData(
-    await get(ROUTES.CASINOS + (casinoId && casinoId !== 'total' ? `?casino_id=${casinoId}` : '')).then(({ data }) =>
-    (casinoId && casinoId !== 'total') ? data.casinos[casinoId] : data.total
+    await get(ROUTES.CASINOS + (!isTotal ? `?casino_id=${casinoId}` : '')).then(({ data }) =>
+    !isTotal ? data.casinos[casinoId] : data.total
     )
   );
+  const updateCasinoUserId = async () => {
+    // Prevent updating casino user ID for total leaderboard
+    if (isTotal) {
+      alert('Cannot update casino user ID for total leaderboard');
+      return;
+    }
+    
+    await post(ROUTES.CASINOS, { casino_id: casinoId, casino_user_id: casinoUserIdInputValue }).catch(alert)
+      .then(r => {
+        if (!r.data.err) {
+          setCasinoUser(r?.data?.user_casino); 
+          setCasinoData(r.data?.leaderboard);
+        }
+      });
+  };
 
-  const updateCasinoUserId = async () => await post(ROUTES.CASINOS, { casino_id: casinoId, casino_user_id: casinoUserId }).catch(alert)
-    .then(r => {
-      if (!r.data.err) {
-        setCasinoUser(r?.data?.user_casino); 
-        setCasinoData(r.data?.leaderboard);
+  const sendBalance = async (amount) => {
+    // Prevent claiming rewards for total leaderboard
+    if (isTotal) {
+      alert('Cannot claim rewards for total leaderboard');
+      return;
+    }
+    
+    try {
+      // Claim reward immediately
+      const response = await post(ROUTES.CLAIM_REWARD, { 
+        amount, 
+        casino_id: casinoId,
+        user_id: userId
+      });
+      
+      if (response.data.err) {
+        alert(response.data.err);
+        return;
       }
-    });
-
-  const sendBalance = async () => await post(ROUTES.CLAIM_REWARD, { amount, casinoId }).catch(alert)
-    .then(r => { if (r.data.err) { alert(r.data.err); return; } setCasinoUser(cu => ({ ...cu, total_reward: r?.data?.balance })); });
+      
+      // Show success message
+      alert('Reward claimed successfully!');
+      
+      // Refresh data to show updated balance
+      getLeadboard();
+    } catch (error) {
+      alert('Error claiming reward: ' + error.message);
+    }
+  };
 
   useEffect(() => {
     getLeadboard();
@@ -167,70 +208,58 @@ const CasinoBase = ({
   const currentStyles = getStyles(color);
 
   // Check if user is valid (has casino_user_id for individual casinos, or just exists for total)
-  const isValidUser = casinoUser && (isTotal || casinoUser.casino_user_id);
+  const isValidUser = (casinoUser || currentUserInLeaderboard) && (isTotal || casinoUser?.casino_user_id);
+  
+  // Check if this is a valid casino (not total) - show user input and withdrawal for all valid casinos
+  const isValidCasino = !isTotal;
 
-  // Render custom header if provided
-  if (customHeader) {
-    return customHeader({
-      focused,
-      casinoId,
-      casinoUser,
-      casinoData,
-      amount,
-      casinoUserId,
-      setAmount,
-      setCasinoUserId,
-      updateCasinoUserId,
-      sendBalance,
-      isValidUser,
-      isTotal,
-      displayName,
-      color,
-      currentStyles,
-      total_reward,
-      allowWithdraw,
-      leaderboard,
-      userId
-    });
-  }
+
   
   return (
     <Container maxWidth={false} disableGutters sx={currentStyles.mainBox}>
-      {/* Focus Indicator */}
-      {!focused && (
-        <>
-          {/* Blur effect behind the text */}
-          <Box sx={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backdropFilter: 'blur(8px)',
-            pointerEvents: 'none',
-            zIndex: 1,
-          }} />
-        </>
-      )}
+
 
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
           {/* Name on the left */}
           <Typography variant="h4" fontWeight="700" sx={currentStyles.title}>
-            {displayName} Leaderboard
+            {casinoName} Leaderboard
           </Typography>
           
           {/* Logo on the right */}
           <Box sx={currentStyles.headerBox}>
             {casinoLogo?.trim()?.startsWith('<svg') ? (
-              <Box dangerouslySetInnerHTML={{ __html: casinoLogo }} className="casino-svg-logo" sx={{display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', '& svg': {width: '100%', height: '100%', maxWidth: '100px', maxHeight: '100px', fill: 'currentColor', color: 'white'}}} />
+              <Box dangerouslySetInnerHTML={{ __html: casinoLogo }} className="casino-svg-logo" sx={{
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                width: '100%', 
+                height: '100%', 
+                '& svg': {
+                  width: '100%', 
+                  height: '100%', 
+                  fill: 'currentColor', 
+                  color: 'white'
+                }
+              }} />
             ) : casinoLogo?.startsWith('http') ? (
-              <img src={casinoLogo} alt={`${displayName} logo`} style={{width: 32, height: 32, objectFit: 'contain', filter: 'brightness(0) invert(1)'}} />
+              <img src={casinoLogo} alt={`${casinoName} logo`} style={{
+                width: '100%', 
+                height: '100%', 
+                objectFit: 'contain', 
+                filter: 'brightness(0) invert(1)'
+              }} />
             ) : casinoLogo ? (
-              React.createElement(casinoLogo, { sx: { fontSize: 32, color: "white" } })
+              React.createElement(casinoLogo, { sx: { 
+                fontSize: { xs: 40, md: 50 }, 
+                color: "white" 
+              }})
             ) : (
-              <CasinoIcon sx={{ fontSize: 32, color: "white" }} />
+              <CasinoIcon sx={{ 
+                fontSize: { xs: 40, md: 50 }, 
+                color: "white" 
+              }} />
             )}
           </Box>
         </Stack>
@@ -239,41 +268,61 @@ const CasinoBase = ({
       </Box>
 
              {/* User Rank Display - Above input fields */}
-       {casinoUser && focused && (
+       {(casinoUser || currentUserInLeaderboard) && focused && (
          <Box sx={{ mb: 4, textAlign: 'center' }}>
-           <Typography variant="h3" fontWeight="700" sx={{ color: color, mb: 1 }}>
-             #{casinoUser.rank || 'N/A'}
+           <Typography variant="h3" fontWeight="700" sx={{ 
+             color: color, 
+             mb: 1,
+             fontSize: { xs: '2rem', sm: '3rem', md: '3.75rem' },
+             lineHeight: { xs: 1.1, sm: 1.2, md: 1.3 }
+           }}>
+             {currentUserInLeaderboard?.rank ? `#${currentUserInLeaderboard.rank}` : 'Unranked'}
            </Typography>
-           <Typography variant="h5" color="rgba(255, 255, 255, 0.8)" mb={2}>
-             Your {isTotal ? 'Total' : displayName} Rank
+           <Typography variant="h5" color="rgba(255, 255, 255, 0.8)" mb={2} sx={{
+             fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' },
+             lineHeight: { xs: 1.2, sm: 1.3, md: 1.4 }
+           }}>
+             Your {isTotal ? 'Total' : casinoName} Rank
            </Typography>
-           <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, flexWrap: 'wrap' }}>
-             {!isTotal && (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', gap: { xs: 2, sm: 3, md: 4 }, flexWrap: 'wrap' }}>
+               {!isTotal && (
+                 <Box sx={{ textAlign: 'center' }}>
+                   <Typography variant="body2" color="rgba(255, 255, 255, 0.7)" sx={{
+                     fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }
+                   }}>{casinoName} ID</Typography>
+                   <Typography variant="h6" color="white" fontWeight="600" sx={{
+                     fontSize: { xs: '1rem', sm: '1.25rem', md: '1.375rem' }
+                   }}>
+                     {casinoUser?.casino_user_id || 'Not Set'}
+                   </Typography>
+                 </Box>
+               )}
                <Box sx={{ textAlign: 'center' }}>
-                 <Typography variant="body2" color="rgba(255, 255, 255, 0.7)">Casino ID</Typography>
-                 <Typography variant="h6" color="white" fontWeight="600">
-                   {casinoUser.casino_user_id || 'Not Set'}
+                 <Typography variant="body2" color="rgba(255, 255, 255, 0.7)" sx={{
+                   fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }
+                 }}>Wager</Typography>
+                 <Typography variant="h6" color="white" fontWeight="600" sx={{
+                   fontSize: { xs: '1rem', sm: '1.25rem', md: '1.375rem' }
+                 }}>
+                   ${currentUserInLeaderboard?.wager?.toLocaleString() || '0'}
                  </Typography>
                </Box>
-             )}
-             <Box sx={{ textAlign: 'center' }}>
-               <Typography variant="body2" color="rgba(255, 255, 255, 0.7)">Wager</Typography>
-               <Typography variant="h6" color="white" fontWeight="600">
-                 ${casinoUser.wager?.toLocaleString() || '0'}
-               </Typography>
+               <Box sx={{ textAlign: 'center' }}>
+                 <Typography variant="body2" color="rgba(255, 255, 255, 0.7)" sx={{
+                   fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }
+                 }}>Revenue</Typography>
+                 <Typography variant="h6" color="white" fontWeight="600" sx={{
+                   fontSize: { xs: '1rem', sm: '1.25rem', md: '1.375rem' }
+                 }}>
+                   ${currentUserInLeaderboard?.revenue?.toLocaleString() || '0'}
+                 </Typography>
+               </Box>
              </Box>
-             <Box sx={{ textAlign: 'center' }}>
-               <Typography variant="body2" color="rgba(255, 255, 255, 0.7)">Revenue</Typography>
-               <Typography variant="h6" color="white" fontWeight="600">
-                 ${casinoUser.revenue?.toLocaleString() || '0'}
-               </Typography>
-             </Box>
-           </Box>
          </Box>
        )}
 
-      {/* Casino User ID Input and Withdraw Balance - Only show for valid users and when focused */}
-      {showUserInput && isValidUser && focused && (
+             {/* Casino User ID Input and Withdraw Balance - Only show for valid casinos, when focused, and when user is logged in */}
+       {showUserInput && !isTotal && focused && userId && (
         <Box sx={{ 
           display: 'flex', 
           flexDirection: { xs: 'column', lg: 'row' }, 
@@ -282,24 +331,34 @@ const CasinoBase = ({
         }}>
           {/* Casino User ID Input */}
           <CasinoUserIdInput
-            currentUser={casinoUser}
+            currentUser={{
+              ...currentUserInLeaderboard,
+              total_reward: casinoUser?.total_reward,
+              casino_user_id: casinoUser?.casino_user_id
+            }}
             onUpdate={updateCasinoUserId}
-            inputValue={casinoUserId}
-            onInputChange={(e) => setCasinoUserId(e.target.value)}
+            inputValue={casinoUserIdInputValue}
+            onInputChange={(e) => setCasinoUserIdInputValue(e.target.value)}
             styles={currentStyles}
             isTotal={isTotal}
+            casinoName={casinoName}
           />
 
-          {/* Withdraw Balance Section */}
-          {showWithdraw && allowWithdraw && (
-            <WithdrawWidget
-              currentUser={casinoUser}
-              onWithdraw={sendBalance}
-              amount={amount}
-              setAmount={setAmount}
-              styles={currentStyles}
-            />
-          )}
+                     {/* Withdraw Balance Section */}
+           {showWithdraw && allowWithdraw && (
+             <WithdrawWidget
+               currentUser={{
+                 ...currentUserInLeaderboard,
+                 total_reward: casinoUser?.total_reward,
+                 casino_user_id: casinoUser?.casino_user_id
+               }}
+               onWithdraw={sendBalance}
+               amount={amount}
+               setAmount={setAmount}
+               styles={currentStyles}
+               casinoId={casinoId}
+             />
+           )}
         </Box>
       )}
 
@@ -431,7 +490,7 @@ const CasinoBase = ({
                     <Stack direction="row" spacing={2} sx={{ minWidth: 0, flexShrink: 0 }}>
                       {isTotal ? null : (
                         <Box sx={{...currentStyles.stats, minWidth: 80, flexShrink: 0}}>
-                          <Typography variant="body2" color="rgba(255, 255, 255, 0.7)">Casino ID</Typography>
+                          <Typography variant="body2" color="rgba(255, 255, 255, 0.7)">{casinoName} ID</Typography>
                           <Typography variant="body2" color="white" fontWeight="500">{user.casino_user_id || '-'}</Typography>
                         </Box>
                       )}
@@ -454,28 +513,7 @@ const CasinoBase = ({
         </Box>
       )}
 
-      {/* Custom Footer */}
-      {customFooter && customFooter({
-        focused,
-        casinoId,
-        casinoUser,
-        casinoData,
-        amount,
-        casinoUserId,
-        setAmount,
-        setCasinoUserId,
-        updateCasinoUserId,
-        sendBalance,
-        isValidUser,
-        isTotal,
-        displayName,
-        color,
-        currentStyles,
-        total_reward,
-        allowWithdraw,
-        leaderboard,
-        userId
-      })}
+
     </Container>
   );
 };

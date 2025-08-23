@@ -71,7 +71,7 @@ const Home = () => {
             return {
               transform: `translateY(-50%) translateX(${translateX}%) scale(${offsetFromCenter?0.7:1})`,
               left: `${offsetRadius === 0 ? 50 : 50 + (offsetFromCenter * 50) / offsetRadius}%`,
-              opacity: 1
+              opacity: offsetFromCenter ? 0.2 : 1
             };
           }}
         />

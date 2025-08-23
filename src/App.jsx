@@ -4,7 +4,7 @@ import { ROUTES } from "../utils/routes";
 import Home from "./screens/Home";
 import AdminHome from "./screens/AdminHome";
 
-const App = () => <Container sx={{ height: '100vh', width: '100vw' }} disableGutters maxWidth={false}>
+const App = () => <Container disableGutters maxWidth={false}>
     <BrowserRouter >
         <Routes>
             <Route path={ROUTES.HOME} element={<Home />} />

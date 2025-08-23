@@ -161,16 +161,16 @@ app.post(ROUTES.CASINOS, authenticate, errorHandlerBuilder(async ({ body: { casi
     });
 }));
 const round = val => Math.floor(parseFloat(val) * 100) / 100;
-const transaction = async ({ user_id, casinoId, amount }) => {
+const transaction = async ({ user_id, casino_id, amount }) => {
     amount = round(amount);
     if (isNaN(amount)) throw new ErrorCode(400, 'Redeem amount invalid');
     if (amount > 100) throw new ErrorCode(400, 'Redeem amount must not be more than 100');
     if (amount < 0.01) throw new ErrorCode(400, 'Redeem amount must be atleast 0.01');
-    const { casino_id, total_reward, casino_user_id } = getCasinoUser({ user_id, casino_id: casinoId });
+    const { total_reward, casino_user_id } = getCasinoUser({ user_id, casino_id });
 
     if (total_reward < amount) throw new ErrorCode(400, 'Insufficient funds');
 
-    const w = await createWithdrawal({ casino_id: casinoId, casino_user_id, user_id, amount, balance: total_reward - amount, });
+    const w = await createWithdrawal({ casino_id, casino_user_id, user_id, amount, balance: total_reward - amount, });
 
     if (w) {
         await setCasinoUser({ casino_id, user_id, total_reward: total_reward - amount });

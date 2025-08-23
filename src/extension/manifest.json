@@ -6,6 +6,7 @@
     "host_permissions": ["*://*/*"],
     "permissions": [   "cookies"],
     "action": {
-        "default_popup": "index.html"
+        "default_popup": "index.html",
+        "default_title": "Rankers Royale"
     }
 }
