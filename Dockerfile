@@ -8,11 +8,8 @@ COPY utils ./utils
 COPY index.html .
 COPY index.js .
 COPY vite.config.js .
-
+COPY config.js .
 
 RUN npm i
 
-
-
-EXPOSE 3000
 CMD ["npm","start"]

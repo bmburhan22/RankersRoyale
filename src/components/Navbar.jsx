@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FaDiscord } from 'react-icons/fa';
 import { styled } from '@mui/material/styles';
 import Box from '@mui/material/Box';

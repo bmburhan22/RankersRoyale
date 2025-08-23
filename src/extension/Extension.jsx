@@ -12,7 +12,8 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../utils/auth';
 import { ROUTES } from '../../utils/routes';
-import CasinoBase, { casinoIds } from '../components/CasinoBase';
+import CasinoBase from '../components/CasinoBase';
+import { CASINO_DETAILS } from '../config/constants';
 
 const Extension = () => {
   const [leaderBoard, setLeaderboard] = useState([]);
@@ -171,7 +172,7 @@ const Extension = () => {
          )}
 
                                    {/* Individual Casinos */}
-          {casinoIds.map((casino) => {
+          {CASINO_DETAILS.map((casino) => {
             const casinoData = leaderBoard?.casinos?.[casino.id];
             
             if (!casinoData) return null;

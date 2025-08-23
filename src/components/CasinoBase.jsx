@@ -19,18 +19,14 @@ import {
 } from '@mui/icons-material';
 import WithdrawWidget from './WithdrawWidget';
 import CasinoUserIdInput from './CasinoUserIdInput';
-
-const casinoIds = [
-  { id: '500casino', name: '500 Casino' },
-  { id: 'razed', name: 'Razed' }
-];
+import { CASINO_DETAILS } from '../config/constants';
 
 // Reusable styles function
 const getStyles = (color) => ({
   mainBox: {
     py: 0, 
     px: 0,
-    background: "linear-gradient(135deg, #0f1419 0%, #1a2332 50%, #0f1419 100%)",
+    background: "linear-gradient(135deg, rgba(15, 20, 25, 0.85) 0%,rgb(5, 20, 46) 50%, rgba(15, 20, 25, 0.85) 100%)",
     display: "block",
     position: "relative", 
     overflow: "auto", 
@@ -39,7 +35,7 @@ const getStyles = (color) => ({
     borderRadius: 0,
     boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(0, 123, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
     backdropFilter: "blur(20px)",
-    background: "rgba(15, 20, 25, 0.85)",
+    // background: "rgba(15, 20, 25, 0.85)",
     p: 4, 
     color: "white", 
     mx: "auto",
@@ -126,10 +122,10 @@ const CasinoBase = ({
   
   // Get total_reward from casinoUser (user input state) and other data from leaderboard
   const { leaderboard, allowWithdraw, logo:casinoLogo, color:casinoColor, referralLink } = casinoData ?? {};
-  const isTotal = !casinoId || casinoId === 'total' || !casinoIds.some(casino => casino.id === casinoId);
+  const isTotal = !casinoId || casinoId === 'total' || !CASINO_DETAILS.some(casino => casino.id === casinoId);
   
-  // Fallback casinoName to "Total" if not available, or use name from casinoIds list
-  const casinoName = isTotal ? 'Total' : (casinoIds.find(casino => casino.id === casinoId)?.name || 'Total');
+  // Fallback casinoName to "Total" if not available, or use name from CASINO_DETAILS array
+  const casinoName = isTotal ? 'Total' : (CASINO_DETAILS.find(casino => casino.id === casinoId)?.name || 'Total');
   
   // Default color to white if casinoColor is null/undefined
   const color = casinoColor || '#ffffff';
@@ -519,4 +515,4 @@ const CasinoBase = ({
 };
 
 export default CasinoBase;
-export { getStyles, casinoIds };
+export { getStyles };

@@ -85,7 +85,7 @@ app.get(REDIRECT, errorHandlerBuilder(async ({ query: { code } }, res) => {
     });
     const { data: { access_token } } = await axios.post(`${DISCORD_API}/oauth2/token`, params,);
     const { data: { id: user_id, username, discriminator } } = await axios.get(`${DISCORD_API}/users/@me`, { headers: { 'Authorization': `Bearer ${access_token}`, } });
-    await setUser({ user_id, username, discriminator });
+    // await setUser({ user_id, username, discriminator });
     return res.cookie('token', jwt.sign(user_id, JWT_SECRET), { maxAge: 30 * 24 * 60 * 60 * 1000 }).redirect(ROUTES.HOME);
 
 }));

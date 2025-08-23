@@ -4,21 +4,17 @@ import Casinos from './Casinos';
 import { useSearchParams } from 'react-router-dom';
 import Carousel from 'react-spring-3d-carousel';
 import { config } from 'react-spring';
-import { useAuth } from '../utils/auth';
-import { ROUTES } from '../../utils/routes';
 import Navbar from '../components/Navbar';
-import { APP_BAR_HEIGHT } from '../config/constants';
+import { APP_BAR_HEIGHT, CASINO_DETAILS } from '../config/constants';
 import './styles.css';
 
-const casinoIds = ['500casino', 'razed'];
+const casinoIds = CASINO_DETAILS.map(casino => casino.id);
 
 const Home = () => {
   const [params, setParams] = useSearchParams();
   const casinoId = params.get('casino_id');
   const [slide, setSlide] = useState();
 
-  const { isAuth } = useAuth();
-  
   useEffect(
     () => {
       if (!casinoIds.includes(casinoId)) setParams();
