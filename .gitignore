@@ -1,6 +1,6 @@
 dist-ext
 # certs/
-*.pem
+./*.pem
 *.sqlite
 .env
 start-ngrok.bat
