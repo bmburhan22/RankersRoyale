@@ -135,7 +135,7 @@ const getCasinoLeaderboards = (casinoIds = validCasinoIds) => {
                 }
             }
         }
-        leaderboards.casinos[casino_id].leaderboard = casinoMembers.filter(cu => cu.user_id != null).toSorted((a, b) => b.wager - a.wager) 
+        leaderboards.casinos[casino_id].leaderboard = casinoMembers.filter(cu => userIds.includes(cu.user_id)).toSorted((a, b) => b.wager - a.wager) 
         // why filter? because casino referred users are not in bot.verifiedMembers
         leaderboards.casinos[casino_id].leaderboard.forEach((cu, i) => cu.rank = i + 1);
     }
