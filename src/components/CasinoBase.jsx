@@ -182,11 +182,9 @@ const CasinoBase = ({
         return;
       }
       
-      // Show success message
-      alert('Reward claimed successfully!');
-      
       // Refresh data to show updated balance
-      getLeadboard();
+      setCasinoUser(cu=>({...cu,total_reward:Number(response?.data?.balance)})); 
+      await getLeadboard();
     } catch (error) {
       alert('Error claiming reward: ' + error.message);
     }

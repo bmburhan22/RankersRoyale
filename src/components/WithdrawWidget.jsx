@@ -25,7 +25,7 @@ const WithdrawWidget = ({
   const [showSuccess, setShowSuccess] = useState(false);
   
   // Try to find the balance from different possible field names
-  const balance = currentUser?.total_reward || currentUser?.reward || currentUser?.balance || 0;
+  const balance = currentUser?.total_reward || 0;
 
   const handleWithdrawRequest = async () => {
     if (!amount || parseFloat(amount) <= 0 || parseFloat(amount) > balance) return;
