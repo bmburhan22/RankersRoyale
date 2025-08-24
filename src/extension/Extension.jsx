@@ -64,10 +64,13 @@ const Extension = () => {
           <Typography variant="h4" sx={{ color: 'white', mb: 3, fontWeight: 600 }}>
             Rankers Royale Extension
           </Typography>
-          <Button
-            variant="contained"
-            href={ROUTES.LOGIN}
+          <Box
+            component="a"
+            href={DISCORD_OAUTH2_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             sx={{
+              display: 'inline-block',
               background: 'linear-gradient(45deg, #7289da, #5865f2)',
               color: 'white',
               borderRadius: '25px',
@@ -78,6 +81,8 @@ const Extension = () => {
               fontWeight: 600,
               boxShadow: '0 4px 15px rgba(114, 137, 218, 0.4)',
               transition: 'all 0.3s ease',
+              textDecoration: 'none',
+              cursor: 'pointer',
               '&:hover': {
                 background: 'linear-gradient(45deg, #5865f2, #7289da)',
                 boxShadow: '0 6px 20px rgba(114, 137, 218, 0.6)',
@@ -86,7 +91,7 @@ const Extension = () => {
             }}
           >
             Login with Discord
-          </Button>
+          </Box>
         </Box>
       </Container>
     );

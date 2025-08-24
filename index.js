@@ -21,7 +21,7 @@ import {
 } from './utils/db.js';
 import cron from 'node-cron';
 import { getWithdrawableBalances, casinos, refreshLeaderboardData, initCasinos, validCasinoIds } from './utils/casinos.js';
-import { PORT, JWT_SECRET, REDIRECT, REDIRECT_URI, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_OAUTH2_URL, timezone } from './config.js';
+import { PORT, JWT_SECRET, REDIRECT, REDIRECT_URI, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, timezone } from './config.js';
 
 import { readFileSync } from 'fs';
 
@@ -288,7 +288,6 @@ app.post(ROUTES.SETTINGS, [authenticate, authenticateAdmin], errorHandlerBuilder
 }));
 app.get(ROUTES.SETTINGS, [authenticate, authenticateAdmin], errorHandlerBuilder(async (req, res) => res.json(settingsCache)));
 
-app.get(ROUTES.LOGIN, errorHandlerBuilder(async (req, res) => res.redirect(DISCORD_OAUTH2_URL)));
 app.get(CLIENT_ROUTES, errorHandlerBuilder(async (req, res) => res.sendFile(path.join(VITE_PATH, 'index.html'))));
 app.get('*', errorHandlerBuilder((req, res) => res.redirect(ROUTES.HOME)));
 

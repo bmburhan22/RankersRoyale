@@ -2,7 +2,6 @@
 export const ROUTES ={
     HOME: '/',
     CASINOS_PAGE: '/casinos',
-    LOGIN: '/login',
     ADMIN_HOME: '/admin',
     
     ME: '/api/me',

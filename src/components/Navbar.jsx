@@ -18,14 +18,12 @@ import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
-import PersonIcon from '@mui/icons-material/Person';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import Link from '@mui/material/Link';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import EmailIcon from '@mui/icons-material/Email';
 import { useAuth } from '../utils/auth';
-import {ROUTES}  from '../../utils/routes';
 import { APP_BAR_HEIGHT } from '../config/constants';
 
 const drawerWidth = 280;
@@ -154,7 +152,7 @@ const Navbar = () => {
               <Button
                 variant="contained"
                 startIcon={<FaDiscord />}
-                href={ROUTES.LOGIN}
+                href={DISCORD_OAUTH2_URL}
                 sx={{
                   background: 'linear-gradient(45deg, #7289da, #5865f2)',
                   color: 'white',

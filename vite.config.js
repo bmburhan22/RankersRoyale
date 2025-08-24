@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import fs from 'fs';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
-import { HOST, PORT } from './config.js';
+import { HOST, PORT, DISCORD_OAUTH2_URL } from './config.js';
 const API_URL = JSON.stringify(new URL(`https://${HOST}:${PORT}`).origin);
 console.log({ API_URL })
 
@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: BUILDEXT ? 'dist-ext' : 'dist'
     },
-    define: { API_URL, BUILDEXT },
+    define: { API_URL, BUILDEXT, DISCORD_OAUTH2_URL:JSON.stringify(DISCORD_OAUTH2_URL) },
     server: {
       host: true,
       port: 8080,
