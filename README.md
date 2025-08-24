@@ -12,6 +12,19 @@ Rankers Royale is a complete web application for ranking users by points earned 
 - Leaderboard reset and new season management
 - Chrome extension build mode
 
+## Application Screenshots
+
+### User Authentication & Management
+![Discord Login](assets/login.gif) - Discord OAuth2 login flow and user authentication
+
+### User ID Validation
+![Valid ID](assets/validcuid.gif) - Successfully linking a valid leaderboard user
+![Invalid ID](assets/invalidcuid.gif) - Linking a non-leaderboard user
+
+### Member Management
+![Member Management](assets/member.gif) - Admin panel for managing user memberships and settings
+![Admin Dashboard](assets/admin.png) - Complete admin dashboard with system settings and member management
+
 ## Authentication System
 
 ### Discord OAuth2 Integration
