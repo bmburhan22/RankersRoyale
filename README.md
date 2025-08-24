@@ -25,6 +25,9 @@ Rankers Royale is a complete web application for ranking users by points earned 
 ![Member Management](assets/member.gif) - Admin panel for managing user memberships and settings
 ![Admin Dashboard](assets/admin.png) - Complete admin dashboard with system settings and member management
 
+### Chrome Extension
+![Chrome Extension](assets/extension.gif) - Chrome extension popup to view personal rank and withdraw
+
 ## Authentication System
 
 ### Discord OAuth2 Integration
