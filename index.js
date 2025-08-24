@@ -292,4 +292,4 @@ app.get(CLIENT_ROUTES, errorHandlerBuilder(async (req, res) => res.sendFile(path
 app.get('*', errorHandlerBuilder((req, res) => res.redirect(ROUTES.HOME)));
 
 const server = https.createServer({ key: readFileSync('./certs/key.pem'), cert: readFileSync('./certs/cert.pem') }, app)
-console.log(server.listen(PORT).address());
+console.log(server.listen(PORT, '0.0.0.0').address());
